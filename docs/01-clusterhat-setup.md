@@ -49,6 +49,8 @@ clusterctrl on p1     # power on a single node
 clusterctrl status    # check node power status
 ```
 
+See [01b-clusterctrl-reference.md](01b-clusterctrl-reference.md) for the full command reference including fan, hub, and LED control.
+
 ## Enable CNAT
 
 CNAT routes internet traffic from p1–p4 through the Pi 4 controller.

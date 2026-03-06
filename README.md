@@ -42,6 +42,7 @@ LAN
 ## Setup Order
 
 1. [ClusterHAT OS & CNAT setup](docs/01-clusterhat-setup.md)
+   - [clusterctrl command reference](docs/01b-clusterctrl-reference.md)
 2. [K3s server on Pi 4](docs/02-k3s-server.md)
 3. [K3s agents on Pi Zeros](docs/03-k3s-agents.md)
 4. [MetalLB load balancer](docs/04-metallb.md)
