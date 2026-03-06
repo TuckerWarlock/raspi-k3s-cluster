@@ -39,6 +39,10 @@ LAN
 
 > Adjust IPs to match your actual CNAT subnet.
 
+## Architecture & Stack Decisions
+
+See [docs/architecture.md](docs/architecture.md) for the full tech stack, network layout, workload placement strategy, and decisions log.
+
 ## Setup Order
 
 1. [ClusterHAT OS & CNAT setup](docs/01-clusterhat-setup.md)
