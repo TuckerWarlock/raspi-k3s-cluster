@@ -104,7 +104,7 @@ Then wait ~60 seconds for the Pi Zeros to finish booting before proceeding with 
 The node hostnames default to `p1`–`p4` on the CNAT subnet:
 
 ```bash
-ssh pi@p1   # or ssh pi@172.19.181.2
+ssh pi@p1   # or ssh pi@172.19.181.1
 ssh pi@p2
 ssh pi@p3
 ssh pi@p4

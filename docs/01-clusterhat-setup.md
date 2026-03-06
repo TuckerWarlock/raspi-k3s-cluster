@@ -100,10 +100,10 @@ sudo sysctl -p /etc/sysctl.d/99-k3s.conf
 SSH into each node from the Pi 4 and confirm internet access:
 
 ```bash
-ssh pi@172.19.181.2   # p1
-ssh pi@172.19.181.3   # p2
-ssh pi@172.19.181.4   # p3
-ssh pi@172.19.181.5   # p4
+ssh pi@172.19.181.1   # p1
+ssh pi@172.19.181.2   # p2
+ssh pi@172.19.181.3   # p3
+ssh pi@172.19.181.4   # p4
 
 ping -c 3 8.8.8.8
 ```

@@ -12,7 +12,7 @@ Run `scripts/install-k3s-agent.sh` on each Pi Zero, or follow manually.
 
 ```bash
 curl -sfL https://get.k3s.io | \
-  K3S_URL=https://172.19.181.1:6443 \
+  K3S_URL=https://172.19.181.254:6443 \
   K3S_TOKEN=<node-token> \
   sh -s - agent \
     --node-ip <this-pizero-ip> \
@@ -20,9 +20,9 @@ curl -sfL https://get.k3s.io | \
 ```
 
 Replace:
-- `172.19.181.1` with your Pi 4's CNAT interface IP
+- `172.19.181.254` with your Pi 4's CNAT interface IP
 - `<node-token>` with the token from the server
-- `<this-pizero-ip>` with this node's IP (e.g. `172.19.181.2` for p1)
+- `<this-pizero-ip>` with this node's IP (e.g. `172.19.181.1` for p1)
 - `usb0` with the correct interface name if different (check with `ip link`)
 
 ## Verify (from Pi 4)
