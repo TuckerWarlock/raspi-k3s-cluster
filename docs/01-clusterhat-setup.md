@@ -29,8 +29,29 @@ Flash the correct ClusterHAT images for your hardware. Two variants are availabl
 
 ## Flashing
 
-Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) or `dd`/`balenaEtcher`.
-Flash the controller image to the Pi 4's SD card, and each node image to its respective Pi Zero SD card.
+### ⚠️ Use Raspberry Pi Imager v1.9.6 — NOT the latest version
+
+Raspberry Pi Imager **v2.0 and newer breaks the "Customize" option** for third-party images
+like the ClusterHAT images. The OS Customization dialog (where you set WiFi, SSH, and
+username/password) will not appear or will be greyed out for these images in newer versions.
+
+**Download v1.9.6 specifically:**
+👉 https://github.com/raspberrypi/rpi-imager/releases/tag/v1.9.6
+
+With v1.9.6, after selecting your image and target SD card, click **"Edit Settings"**
+(the gear/customize button) to configure:
+
+- ✅ **Hostname** — set unique names (e.g. `controller`, `p1`, `p2`, `p3`, `p4`)
+- ✅ **SSH** — enable SSH (use password authentication)
+- ✅ **Username / Password** — set your `pi` user password
+- ✅ **WiFi SSID / Password** — set on the Pi 4 controller image only (nodes connect via USB through the HAT, not WiFi)
+- ✅ **Locale / Timezone** — optional but saves time
+
+> The Pi Zero node images (p1–p4) do **not** need WiFi configured — they reach the network
+> through the ClusterHAT USB connection to the Pi 4. Still set SSH, username, and password on each.
+
+Flash the controller image to the Pi 4's SD card, then flash each node image (P1/P2/P3/P4)
+to its respective Pi Zero SD card with the appropriate hostname.
 
 ## First Boot
 
