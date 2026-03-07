@@ -2,7 +2,7 @@
 
 K3s Kubernetes cluster running on a Raspberry Pi 4 controller with four Pi Zero 2 W worker nodes via a [ClusterHAT](https://clusterctrl.com/).
 
-## Hardware
+## [Hardware](https://clusterctrl.com/setup-assembly)
 
 | Role | Device | RAM |
 |------|--------|-----|
@@ -12,17 +12,25 @@ K3s Kubernetes cluster running on a Raspberry Pi 4 controller with four Pi Zero 
 | p3 — Worker | Raspberry Pi Zero 2 W (via ClusterHAT) | 512MB |
 | p4 — Worker | Raspberry Pi Zero 2 W (via ClusterHAT) | 512MB |
 
-## ClusterHAT Images
+Raspberry Pi can be purchased at these authorized resellers
+- https://www.sparkfun.com/ - Raspberry Pi 4
+- https://thepihut.com/ - ClusterHAT and case (or you can 3d print a case)
+- https://www.canakit.com/ - Raspberry Pi Zero 2W
+
+## [ClusterHAT Images](https://clusterctrl.com/setup-software)
 
 | Device | Image |
 |--------|-------|
-| Raspberry Pi 4 (controller) | CNAT - Lite Controller — Lite Bookworm (or Desktop Bookworm for GUI) |
+| (GUI) controller | CNAT - Desktop Controller - Desktop Bookworm image for the controller (3/3+/4/400) |
+| (CLI) controller | CNAT - Lite Controller - Lite Bookworm image for the controller (3/3+/4/400)       |
 | p1 | CNAT - Lite Bookworm — Zero 2/A3+/CM3/CM4 only — P1 |
 | p2 | CNAT - Lite Bookworm — Zero 2/A3+/CM3/CM4 only — P2 |
 | p3 | CNAT - Lite Bookworm — Zero 2/A3+/CM3/CM4 only — P3 |
 | p4 | CNAT - Lite Bookworm — Zero 2/A3+/CM3/CM4 only — P4 |
 
 > Each node image is unique — flash the correct P1/P2/P3/P4 image to each Pi Zero SD card.
+
+All image releases can be downloaded from source here: https://dist1.8086.net/clusterctrl/bookworm/
 
 ## Network Layout
 
