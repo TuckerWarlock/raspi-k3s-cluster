@@ -5,19 +5,35 @@
 set -euo pipefail
 
 # K3s requires memory cgroup support. On Raspberry Pi this must be enabled manually.
+# This function is idempotent — safe to run multiple times.
 check_cgroups() {
   local cmdline="/boot/firmware/cmdline.txt"
-  if ! grep -q "cgroup_memory=1" "$cmdline" || ! grep -q "cgroup_enable=memory" "$cmdline"; then
-    echo "==> [WARN] Memory cgroup flags missing from $cmdline"
-    echo "    Adding 'cgroup_memory=1 cgroup_enable=memory'..."
-    sudo sed -i '1s/^/cgroup_memory=1 cgroup_enable=memory /' "$cmdline"
-    echo ""
-    echo "==> Reboot required for cgroup changes to take effect."
-    echo "    Run: sudo reboot"
-    echo "    Then re-run this script after the reboot."
-    exit 0
+
+  # Already set — nothing to do
+  if grep -q "cgroup_memory=1" "$cmdline" && grep -q "cgroup_enable=memory" "$cmdline"; then
+    echo "==> Memory cgroups OK"
+    return
   fi
-  echo "==> Memory cgroups OK"
+
+  echo "==> [WARN] Memory cgroup flags missing from $cmdline"
+  echo "    Removing any partial flags and writing cleanly..."
+
+  # Strip any partial/duplicate flags that may have been added by a previous run,
+  # then prepend both flags together on the single required line.
+  sudo sed -i \
+    's/cgroup_memory=1 //g;
+     s/cgroup_enable=memory //g;
+     s/^/cgroup_memory=1 cgroup_enable=memory /' \
+    "$cmdline"
+
+  echo ""
+  echo "    Updated $cmdline:"
+  cat "$cmdline"
+  echo ""
+  echo "==> Reboot required for cgroup changes to take effect."
+  echo "    Run: sudo reboot"
+  echo "    Then re-run this script after the reboot."
+  exit 0
 }
 
 check_cgroups
