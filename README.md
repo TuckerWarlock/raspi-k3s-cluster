@@ -65,6 +65,8 @@ See [docs/architecture.md](docs/architecture.md) for the full tech stack, networ
 
 | Script | Purpose |
 |--------|---------|
+| `scripts/set-static-ip.sh` | Set static IPv4 (192.168.1.4) on the Pi 4 via NetworkManager |
+| `scripts/setup-controller.sh` | Install CLI tools (lsd, oh-my-posh, FiraCode) and write .bash_profile |
 | `scripts/install-k3s-server.sh` | Install K3s on the Pi 4 control plane |
 | `scripts/install-k3s-agent.sh` | Install K3s agent on a Pi Zero worker |
 | `scripts/install-helm.sh` | Install Helm on the Pi 4 |
