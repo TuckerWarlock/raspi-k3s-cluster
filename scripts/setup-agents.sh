@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# setup-controller.sh
-# Run once on the Raspberry Pi 4 controller after first boot.
-# Installs CLI tools, sets up .bash_profile, and installs oh-my-posh + FiraCode font.
+# setup-agents.sh
+# Run on each Pi Zero 2 W worker node (p1–p4) after first boot.
+# Installs CLI tools and sets up .bash_profile with oh-my-posh (tokyo theme).
+#
+# Usage:
+#   bash setup-agents.sh
+#   or
+#   curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/setup-agents.sh | bash
 
 set -euo pipefail
 
-echo "==> Clearing apt lists and updating..."
-sudo rm -rf /var/lib/apt/lists/*
-sudo apt update
-
-echo ""
 echo "==> Installing packages..."
-sudo apt install -y lsd git curl
+sudo apt install -y lsd
 
 echo ""
 echo "==> Installing oh-my-posh..."
@@ -34,9 +34,8 @@ export PATH=$PATH:/home/warl0ck/.local/bin
 alias ls='lsd'
 
 # oh-my-posh
-eval "$(oh-my-posh init bash --config ~/.cache/oh-my-posh/themes/night-owl.omp.json)"
+eval "$(oh-my-posh init bash --config ~/.cache/oh-my-posh/themes/tokyo.omp.json)"
 EOF
 
 echo ""
 echo "==> Done! Run 'source ~/.bash_profile' or open a new shell to apply changes."
-echo "    Make sure your terminal is set to use 'FiraCode Nerd Font Mono' for oh-my-posh to render correctly."
