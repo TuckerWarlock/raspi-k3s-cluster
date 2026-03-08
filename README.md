@@ -52,30 +52,44 @@ LAN
 Run these in order on a fresh flash — no cloning required:
 
 ```bash
-# 1. Set static IP (192.168.1.4)
+# 1. Edit cmdline.txt to enable cgroup memory (required for K3s)
+#    Append to the END of the existing single line — do not add a newline:
+#      cgroup_memory=1 cgroup_enable=memory
+sudo nano /boot/firmware/cmdline.txt
+sudo reboot
+# SSH back in after reboot, then continue:
+
+# 2. Set static IP (192.168.1.4)
 curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/set-static-ip.sh | sudo bash
 
-# 2. Install CLI tools + .bash_profile (lsd, oh-my-posh, FiraCode)
+# 3. Install CLI tools + .bash_profile (lsd, oh-my-posh, FiraCode)
 curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/setup-controller.sh | bash
 
-# 3. Clone the repo
+# 4. Clone the repo
 git clone https://github.com/TuckerWarlock/raspi-k3s-cluster.git
 cd raspi-k3s-cluster
 
-# 4. Install K3s (checks cgroups, prompts reboot if needed — re-run after reboot)
+# 5. Install K3s
 bash scripts/install-k3s-server.sh
 
-# 5. Install Helm
+# 6. Install Helm
 bash scripts/install-helm.sh
 ```
 
 ## Quick Start (Pi Zero Workers — run on each p1–p4)
 
 ```bash
-# 1. Install CLI tools + .bash_profile (lsd, oh-my-posh tokyo theme, FiraCode)
+# 1. Edit cmdline.txt to enable cgroup memory (required for K3s)
+#    Append to the END of the existing single line — do not add a newline:
+#      cgroup_memory=1 cgroup_enable=memory
+sudo nano /boot/firmware/cmdline.txt
+sudo reboot
+# SSH back in after reboot, then continue:
+
+# 2. Install CLI tools + .bash_profile (lsd, oh-my-posh tokyo theme, FiraCode)
 curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/setup-agents.sh | bash
 
-# 2. Install K3s agent (will prompt for token and node IP)
+# 3. Install K3s agent (will prompt for token and node IP)
 curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/install-k3s-agent.sh | bash
 ```
 

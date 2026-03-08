@@ -2,6 +2,14 @@
 # install-k3s-agent.sh
 # Run on each Pi Zero 2 W worker node (p1–p4) to join the K3s cluster.
 #
+# Prerequisites:
+#   Before running this script, ensure cgroup memory is enabled in cmdline.txt:
+#     sudo nano /boot/firmware/cmdline.txt
+#   Append to the end of the existing line (do not add a new line):
+#     cgroup_memory=1 cgroup_enable=memory
+#   Then reboot: sudo reboot
+#   Re-run this script after the reboot.
+#
 # Usage (interactive — will prompt for token and node IP):
 #   bash install-k3s-agent.sh
 #
@@ -10,36 +18,27 @@
 
 set -euo pipefail
 
-# K3s requires memory cgroup support. On Raspberry Pi this must be enabled manually.
-# This function is idempotent — safe to run multiple times.
+# Verify cgroup memory flags are present before attempting install.
 check_cgroups() {
   local cmdline="/boot/firmware/cmdline.txt"
-
-  # Already set — nothing to do
   if grep -q "cgroup_memory=1" "$cmdline" && grep -q "cgroup_enable=memory" "$cmdline"; then
     echo "==> Memory cgroups OK"
     return
   fi
 
-  echo "==> [WARN] Memory cgroup flags missing from $cmdline"
-  echo "    Removing any partial flags and writing cleanly..."
-
-  # Strip any partial/duplicate flags that may have been added by a previous run,
-  # then append both flags to the end of the line (as recommended by K3s docs).
-  sudo sed -i \
-    's/ cgroup_memory=1//g;
-     s/ cgroup_enable=memory//g;
-     s/$/ cgroup_memory=1 cgroup_enable=memory/' \
-    "$cmdline"
-
   echo ""
-  echo "    Updated $cmdline:"
-  cat "$cmdline"
+  echo "==> [ERROR] Memory cgroup flags missing from $cmdline"
   echo ""
-  echo "==> Reboot required for cgroup changes to take effect."
-  echo "    Run: sudo reboot"
-  echo "    Then re-run this script after the reboot."
-  exit 0
+  echo "    Add the following to the END of the single line in $cmdline:"
+  echo "      cgroup_memory=1 cgroup_enable=memory"
+  echo ""
+  echo "    Edit the file:"
+  echo "      sudo nano $cmdline"
+  echo ""
+  echo "    Then reboot and re-run this script:"
+  echo "      sudo reboot"
+  echo ""
+  exit 1
 }
 
 check_cgroups
