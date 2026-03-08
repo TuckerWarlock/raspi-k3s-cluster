@@ -25,7 +25,7 @@ Power and USB connectivity to all four nodes is managed by the HAT.
 ```
 Home LAN (192.168.x.x — DHCP assigned by router)
  └── Raspberry Pi 4 controller
-      ├── eth0  → 192.168.x.x  (LAN, DHCP — set static on router if needed)
+      ├── eth0  → 192.168.1.104  (LAN, static DHCP reservation on router)
       └── usb0  → 172.19.181.254  (CNAT gateway for Pi Zero nodes)
            ├── p1  172.19.181.1
            ├── p2  172.19.181.2

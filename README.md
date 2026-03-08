@@ -38,7 +38,7 @@ The ClusterHAT uses CNAT to route the p1–p4 subnet through the Pi 4 controller
 
 ```
 LAN
- └── Raspberry Pi 4 controller (eth0: 192.168.x.x, usb0: 172.19.181.254)
+ └── Raspberry Pi 4 controller (eth0: 192.168.1.104, usb0: 172.19.181.254)
       ├── p1 (Pi Zero 2 W)  172.19.181.1
       ├── p2 (Pi Zero 2 W)  172.19.181.2
       ├── p3 (Pi Zero 2 W)  172.19.181.3
