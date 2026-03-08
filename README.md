@@ -47,7 +47,42 @@ LAN
 
 > Adjust IPs to match your actual CNAT subnet.
 
-## Architecture & Stack Decisions
+## Quick Start (Pi 4 Controller)
+
+Run these in order on a fresh flash — no cloning required:
+
+```bash
+# 1. Set static IP (192.168.1.4)
+curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/set-static-ip.sh | sudo bash
+
+# 2. Install CLI tools + .bash_profile (lsd, oh-my-posh, FiraCode)
+curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/setup-controller.sh | bash
+
+# 3. Clone the repo
+git clone https://github.com/TuckerWarlock/raspi-k3s-cluster.git
+cd raspi-k3s-cluster
+
+# 4. Install K3s (checks cgroups, prompts reboot if needed — re-run after reboot)
+bash scripts/install-k3s-server.sh
+
+# 5. Install Helm
+bash scripts/install-helm.sh
+```
+
+## Quick Start (Pi Zero Workers — run on each p1–p4)
+
+```bash
+# 1. Install CLI tools + .bash_profile (lsd, oh-my-posh tokyo theme, FiraCode)
+curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/setup-agents.sh | bash
+
+# 2. Install K3s agent (will prompt for token and node IP)
+curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/install-k3s-agent.sh | bash
+```
+
+> After running `install-k3s-server.sh` on the controller, get the node token with:
+> `sudo cat /var/lib/rancher/k3s/server/node-token`
+
+
 
 See [docs/architecture.md](docs/architecture.md) for the full tech stack, network layout, workload placement strategy, and decisions log.
 

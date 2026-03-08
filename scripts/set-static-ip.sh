@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # set-static-ip.sh
-# Sets a static IPv4 address on the Pi 4 controller via NetworkManager (nmcli).
-# Run before install-k3s-server.sh to ensure a stable, predictable IP.
+# Usage (curl — requires sudo):
+#   curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/set-static-ip.sh | sudo bash
 #
 # Defaults:
 #   STATIC_IP=192.168.1.4
