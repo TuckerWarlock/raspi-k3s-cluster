@@ -25,11 +25,11 @@ check_cgroups() {
   echo "    Removing any partial flags and writing cleanly..."
 
   # Strip any partial/duplicate flags that may have been added by a previous run,
-  # then prepend both flags together on the single required line.
+  # then append both flags to the end of the line (as recommended by K3s docs).
   sudo sed -i \
-    's/cgroup_memory=1 //g;
-     s/cgroup_enable=memory //g;
-     s/^/cgroup_memory=1 cgroup_enable=memory /' \
+    's/ cgroup_memory=1//g;
+     s/ cgroup_enable=memory//g;
+     s/$/ cgroup_memory=1 cgroup_enable=memory/' \
     "$cmdline"
 
   echo ""
