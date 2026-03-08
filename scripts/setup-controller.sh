@@ -17,6 +17,9 @@ echo ""
 echo "==> Installing oh-my-posh..."
 curl -s https://ohmyposh.dev/install.sh | bash -s
 
+# Add ~/.local/bin to PATH for the remainder of this script
+export PATH="$HOME/.local/bin:$PATH"
+
 echo ""
 echo "==> Installing FiraCode Nerd Font..."
 oh-my-posh font install firacode
@@ -31,7 +34,7 @@ export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 alias ls='lsd'
 
 # oh-my-posh
-eval "$(oh-my-posh init bash --config ~/.cache/oh-my-posh/omp.cache/night-owl.omp.json)"
+eval "$(oh-my-posh init bash --config ~/.cache/oh-my-posh/themes/night-owl.omp.json)"
 EOF
 
 echo ""
