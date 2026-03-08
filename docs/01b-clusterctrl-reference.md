@@ -86,6 +86,21 @@ EOF
 sudo systemctl enable --now clusterhat-fan.service
 ```
 
+## Power Wiring — Critical
+
+The ClusterHAT's micro-USB power port **must be connected to a blue USB 3.0 port** on the
+Pi 4 (or an independent USB power supply). The black USB 2.0 ports only supply 500mA —
+not enough for the HAT + Pi Zero 2 W nodes, causing the Pi 4 to brown out and drop its
+network connection whenever a node powers on.
+
+| Port color | Standard | Max current | Works? |
+|------------|----------|-------------|--------|
+| Black      | USB 2.0  | 500 mA      | ❌ Too low — causes brownouts |
+| Blue       | USB 3.0  | 900 mA      | ✅ Required |
+
+> **Symptom of wrong port:** Pi 4 SSH drops immediately after `clusterctrl on p1` —
+> even with a single node. Moving the micro-USB cable to a blue port fixes it.
+
 ## Typical Boot Sequence
 
 After the Pi 4 controller boots, run these to bring the cluster fully online:
