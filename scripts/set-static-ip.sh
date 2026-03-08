@@ -1,23 +1,46 @@
 #!/usr/bin/env bash
 # set-static-ip.sh
-# Usage (curl — requires sudo):
-#   curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/set-static-ip.sh | sudo bash
+# Sets a static IPv4 address on the Pi 4 controller via NetworkManager (nmcli).
+# Auto-detects the active interface (eth0 or wlan0), or override with INTERFACE env var.
 #
-# Defaults:
-#   STATIC_IP=192.168.1.4
-#   GATEWAY=192.168.1.1
-#   DNS=1.1.1.1,8.8.8.8
-#   INTERFACE=wlan0
+# Usage (requires sudo):
+#   sudo bash set-static-ip.sh 192.168.1.x
+#     or
+#   sudo STATIC_IP=192.168.1.x bash set-static-ip.sh
+#
+# The IP address is required — check your router's DHCP lease table for the assigned address.
+# Optional env overrides: GATEWAY, DNS, INTERFACE
 
 set -euo pipefail
 
-STATIC_IP="${STATIC_IP:-192.168.1.4}"
+STATIC_IP="${STATIC_IP:-${1:-}}"
 GATEWAY="${GATEWAY:-192.168.1.1}"
 DNS="${DNS:-1.1.1.1,8.8.8.8}"
-INTERFACE="${INTERFACE:-wlan0}"
 PREFIX="24"  # /24 = 255.255.255.0
 
-echo "==> Setting static IP on ${INTERFACE}..."
+if [[ -z "$STATIC_IP" ]]; then
+  echo "Usage:   sudo STATIC_IP=192.168.1.x bash set-static-ip.sh"
+  echo "     or: sudo bash set-static-ip.sh 192.168.1.x"
+  echo ""
+  echo "Check your router's DHCP lease table to find the assigned IP."
+  exit 1
+fi
+
+# Auto-detect active interface — prefer eth0 over wlan0
+if [[ -n "${INTERFACE:-}" ]]; then
+  echo "==> Using specified interface: ${INTERFACE}"
+elif nmcli -t -f DEVICE,STATE dev status | grep -q "^eth0:connected"; then
+  INTERFACE="eth0"
+  echo "==> Auto-detected active interface: eth0"
+elif nmcli -t -f DEVICE,STATE dev status | grep -q "^wlan0:connected"; then
+  INTERFACE="wlan0"
+  echo "==> Auto-detected active interface: wlan0"
+else
+  echo "ERROR: No active network interface found (checked eth0 and wlan0)."
+  echo "       Run: nmcli device status"
+  exit 1
+fi
+
 echo "    IP:      ${STATIC_IP}/${PREFIX}"
 echo "    Gateway: ${GATEWAY}"
 echo "    DNS:     ${DNS}"
@@ -28,7 +51,7 @@ CONN_NAME=$(nmcli -t -f NAME,DEVICE con show --active | grep ":${INTERFACE}$" | 
 
 if [[ -z "$CONN_NAME" ]]; then
   echo "ERROR: No active NetworkManager connection found on ${INTERFACE}."
-  echo "       Is WiFi connected? Run: nmcli device status"
+  echo "       Run: nmcli device status"
   exit 1
 fi
 
