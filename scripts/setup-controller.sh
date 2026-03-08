@@ -30,6 +30,9 @@ cat > "$HOME/.bash_profile" << 'EOF'
 # PATH
 export PATH=$PATH:/home/warl0ck/.local/bin
 
+# Kubernetes
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
 # Aliases
 alias ls='lsd'
 
