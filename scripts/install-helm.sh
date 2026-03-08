@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # install-helm.sh
 # Run on the Raspberry Pi 4 controller to install Helm.
+# Do NOT run with sudo — the Helm installer handles privilege escalation internally.
+# Helm repos are added for the current user.
+#
+# Usage:
+#   curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/install-helm.sh | bash
+#     or
+#   bash install-helm.sh
 
 set -euo pipefail
 
