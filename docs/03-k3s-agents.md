@@ -8,6 +8,26 @@ Repeat these steps for each node: p1, p2, p3, p4.
 - You have the node token: `sudo cat /var/lib/rancher/k3s/server/node-token`
 - Nodes are reachable: `ping 172.19.181.1` (run `clusterctrl hub on` first if unreachable)
 
+## Step 0 — Under-clock Pi Zero 2 W nodes (required for ClusterHAT stability)
+
+The Pi Zero 2 W draws significantly more power than the original Pi Zero. Without
+under-clocking, powering on nodes will brown out the Pi 4 and kill its network connection.
+
+**Before inserting each SD card into a node**, mount it on your laptop and add the following
+to the bottom of `/boot/firmware/config.txt` (the FAT32 boot partition):
+
+```ini
+# Under-clocking for ClusterHAT + Pi Zero 2 W power stability
+arm_freq=600
+gpu_mem=16
+dtoverlay=disable-wifi
+dtoverlay=disable-bt
+```
+
+> `disable-wifi` and `disable-bt` are safe — nodes communicate exclusively via the USB
+> CNAT interface (`172.19.181.x`), not WiFi. Disabling them reduces power draw and
+> eliminates unused RF interference.
+
 ## Step 1 — Enable cgroup memory
 
 SSH into the node from the controller:
