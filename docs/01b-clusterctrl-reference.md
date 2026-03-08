@@ -93,9 +93,14 @@ After the Pi 4 controller boots, run these to bring the cluster fully online:
 ```bash
 raspi-gpio set 18 op pn dh   # enable fan GPIO (if not in rc.local/systemd yet)
 clusterctrl fan on            # start the fan
+clusterctrl hub on            # enable the USB hub (required for node connectivity)
 clusterctrl on                # power on p1–p4
 clusterctrl status            # verify all nodes are on
 ```
+
+> **Note:** `clusterctrl hub on` must be run after every controller reboot before the
+> nodes are reachable. Without it, pings and SSH to `172.19.181.x` will return
+> "Destination Host Unreachable" even if the nodes are powered on.
 
 Then wait ~60 seconds for the Pi Zeros to finish booting before proceeding with K3s setup.
 
