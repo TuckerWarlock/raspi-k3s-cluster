@@ -64,7 +64,7 @@ curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main
 curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/install-k3s-server.sh | sudo bash
 
 # 5. Install Helm
-curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/install-helm.sh | sudo bash
+curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/install-helm.sh | bash
 ```
 
 > After running `install-k3s-server.sh` on the controller, get the node token with:
