@@ -107,6 +107,42 @@ LAN
 
 > Adjust IPs to match your actual CNAT subnet.
 
+## Monitoring — k9s from Your Laptop
+
+k9s gives you a full terminal UI for the cluster without SSH-ing into the Pi.
+
+**1. Copy the kubeconfig to your laptop** (run this on your laptop):
+```bash
+mkdir -p ~/.kube
+scp warl0ck@pi4controller.local:/etc/rancher/k3s/k3s.yaml ~/.kube/config
+```
+
+**2. Update the server address** (the default `127.0.0.1` only works on the Pi itself):
+```bash
+# macOS
+sed -i '' 's/127.0.0.1/192.168.1.x/g' ~/.kube/config
+
+# Linux
+sed -i 's/127.0.0.1/192.168.1.x/g' ~/.kube/config
+```
+Replace `192.168.1.x` with the Pi 4 controller's actual IP.
+
+**3. Install k9s:**
+```bash
+# macOS
+brew install k9s
+
+# Linux
+curl -sS https://webinstall.dev/k9s | bash
+```
+
+**4. Launch:**
+```bash
+k9s
+```
+
+> If the kubeconfig on the Pi is ever regenerated (e.g. after a K3s reinstall), re-run the `scp` command to pull the updated file.
+
 ## Setup Order
 
 1. [ClusterHAT OS & CNAT setup](docs/01-clusterhat-setup.md)
