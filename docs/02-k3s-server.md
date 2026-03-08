@@ -1,6 +1,22 @@
 # 02 — K3s Server (Pi 4 Control Plane)
 
-Run `scripts/install-k3s-server.sh` or follow steps below manually.
+## Prerequisites
+
+Before installing K3s, cgroup memory must be enabled or the service will fail to start.
+
+```bash
+sudo nano /boot/firmware/cmdline.txt
+```
+
+Append to the **end of the existing single line** (no new line):
+```
+cgroup_memory=1 cgroup_enable=memory
+```
+
+Reboot, then SSH back in before continuing:
+```bash
+sudo reboot
+```
 
 ## Install
 
@@ -10,14 +26,26 @@ curl -sfL https://get.k3s.io | sh -s - server \
   --disable traefik
 ```
 
-> Traefik is disabled here so you can install a specific version via Helm later.
-> Remove `--disable traefik` if you want K3s to manage it automatically.
+> `--write-kubeconfig-mode 644` makes kubeconfig readable without sudo.
+> Traefik is disabled so it can be installed via Helm with full control later.
+
+If the service fails to start on the first run, start it manually after confirming cgroups are active:
+```bash
+sudo systemctl start k3s
+```
+
+## Fix kubeconfig permissions
+
+If you installed without `--write-kubeconfig-mode 644`, fix it manually:
+```bash
+sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+```
 
 ## Verify
 
 ```bash
 sudo systemctl status k3s
-kubectl get nodes
+kubectl get nodes -o wide
 ```
 
 ## Retrieve Node Token
@@ -28,17 +56,15 @@ Workers need this token to join the cluster:
 sudo cat /var/lib/rancher/k3s/server/node-token
 ```
 
-Save this value — you'll need it when running `install-k3s-agent.sh` on each Pi Zero.
+Save this — you'll need it for each Pi Zero agent install.
 
-## kubeconfig
+## kubeconfig (access from laptop)
 
-K3s writes the kubeconfig to `/etc/rancher/k3s/k3s.yaml`.
-The `--write-kubeconfig-mode 644` flag makes it readable without sudo.
-
-To use kubectl from your laptop, copy and update the server IP:
+K3s writes the kubeconfig to `/etc/rancher/k3s/k3s.yaml`. To use `kubectl` from your laptop:
 
 ```bash
-scp pi@<pi4-ip>:/etc/rancher/k3s/k3s.yaml ~/.kube/config
-# Replace 127.0.0.1 with your Pi 4's LAN IP in the file
-sed -i 's/127.0.0.1/<pi4-ip>/g' ~/.kube/config
+scp warl0ck@192.168.1.x:/etc/rancher/k3s/k3s.yaml ~/.kube/config
+# Replace 127.0.0.1 with the Pi 4's LAN IP
+sed -i 's/127.0.0.1/192.168.1.x/g' ~/.kube/config
 ```
+

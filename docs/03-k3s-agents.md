@@ -1,54 +1,66 @@
 # 03 — K3s Agents (Pi Zero 2 W Workers)
 
-Run `scripts/install-k3s-agent.sh` on each Pi Zero, or follow manually.
+Repeat these steps for each node: p1, p2, p3, p4.
 
 ## Prerequisites
 
-- K3s server is running on the Pi 4
-- You have the node token from `/var/lib/rancher/k3s/server/node-token`
-- CNAT is enabled and the Pi Zeros can reach the Pi 4
+- K3s server is running on the Pi 4 controller
+- You have the node token: `sudo cat /var/lib/rancher/k3s/server/node-token`
+- Nodes are reachable: `ping 172.19.181.1` (run `clusterctrl hub on` first if unreachable)
 
-## Install (run on each Pi Zero)
+## Step 1 — Enable cgroup memory
 
+SSH into the node from the controller:
 ```bash
-curl -sfL https://get.k3s.io | \
-  K3S_URL=https://172.19.181.254:6443 \
-  K3S_TOKEN=<node-token> \
-  sh -s - agent \
-    --node-ip <this-pizero-ip> \
-    --flannel-iface usb0
+ssh warl0ck@172.19.181.1   # p1 — adjust IP for each node
 ```
 
-Replace:
-- `172.19.181.254` with your Pi 4's CNAT interface IP
-- `<node-token>` with the token from the server
-- `<this-pizero-ip>` with this node's IP (e.g. `172.19.181.1` for p1)
-- `usb0` with the correct interface name if different (check with `ip link`)
+Edit cmdline.txt and append to the **end of the existing single line**:
+```bash
+sudo nano /boot/firmware/cmdline.txt
+# append: cgroup_memory=1 cgroup_enable=memory
+sudo reboot
+```
 
-## Verify (from Pi 4)
+SSH back in after reboot before continuing.
+
+## Step 2 — Install K3s agent
+
+Download the script locally first (piping via `curl | bash` breaks interactive prompts):
+```bash
+curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/install-k3s-agent.sh -o install-k3s-agent.sh
+```
+
+Run it, passing the token and this node's IP:
+```bash
+K3S_TOKEN=<node-token> NODE_IP=172.19.181.1 bash install-k3s-agent.sh
+# p1 → NODE_IP=172.19.181.1
+# p2 → NODE_IP=172.19.181.2
+# p3 → NODE_IP=172.19.181.3
+# p4 → NODE_IP=172.19.181.4
+```
+
+## Step 3 — Verify (from Pi 4 controller)
 
 ```bash
 kubectl get nodes -o wide
 ```
 
-All four Pi Zeros should appear with status `Ready` within ~60 seconds.
+All four Pi Zeros should appear with status `Ready` within ~60 seconds of the agent starting.
 
 ## Label Nodes
 
-Good practice — label nodes by role or hardware:
-
 ```bash
-kubectl label node p1 node-role.kubernetes.io/worker=worker
-kubectl label node p1 hardware=pi-zero-2w
-# Repeat for p2, p3, p4
+kubectl label node p1 p2 p3 p4 node-role.kubernetes.io/worker=worker
+kubectl label node p1 p2 p3 p4 hardware=pi-zero-2w
 ```
 
 ## Resource Limits Note
 
 Pi Zero 2 W has 512MB RAM. Avoid scheduling memory-hungry pods here.
-Use node selectors or taints to keep control-plane workloads on the Pi 4:
+Use node selectors or taints to keep system workloads on the Pi 4:
 
 ```bash
-# Taint Pi Zeros to only accept explicitly tolerating workloads
-kubectl taint node p1 hardware=pi-zero-2w:NoSchedule
+kubectl taint node p1 p2 p3 p4 hardware=pi-zero-2w:NoSchedule
 ```
+
