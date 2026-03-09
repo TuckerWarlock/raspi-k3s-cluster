@@ -4,6 +4,11 @@ MetalLB gives your cluster real `LoadBalancer` type services on bare metal using
 
 ## Install via Helm
 
+> **⚠️ K3s ships with a built-in load balancer called klipper (ServiceLB).** It conflicts with
+> MetalLB and will prevent it from setting up iptables DNAT rules for LoadBalancer IPs.
+> The `install-k3s-server.sh` script already passes `--disable servicelb` to handle this.
+> If you installed K3s manually without that flag, MetalLB will silently fail to work.
+
 ```bash
 helm repo add metallb https://metallb.github.io/metallb
 helm repo update

@@ -75,7 +75,29 @@ kubectl label node p1 p2 p3 p4 node-role.kubernetes.io/worker=worker
 kubectl label node p1 p2 p3 p4 hardware=pi-zero-2w
 ```
 
-## Resource Limits Note
+## Recovery — Token Swap (after controller reflash)
+
+If the Pi 4 controller is reflashed, its node token changes and all agents will fail to connect.
+Run this from the controller to update all 4 nodes at once:
+
+```bash
+NEW_TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token)
+
+for i in 1 2 3 4; do
+  ssh -o StrictHostKeyChecking=accept-new warl0ck@p$i.local "
+    sudo sed -i 's|K3S_TOKEN=.*|K3S_TOKEN=$NEW_TOKEN|' /etc/systemd/system/k3s-agent.service.env &&
+    sudo rm -f /var/lib/rancher/k3s/agent/server-ca.crt &&
+    sudo systemctl daemon-reload &&
+    sudo systemctl restart k3s-agent
+  "
+  echo "==> p$i done"
+done
+```
+
+Then watch nodes rejoin:
+```bash
+kubectl get nodes -w
+```
 
 Pi Zero 2 W has 512MB RAM. Avoid scheduling memory-hungry pods here.
 Use node selectors or taints to keep system workloads on the Pi 4:

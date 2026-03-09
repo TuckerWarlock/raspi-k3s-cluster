@@ -23,11 +23,13 @@ sudo reboot
 ```bash
 curl -sfL https://get.k3s.io | sh -s - server \
   --write-kubeconfig-mode 644 \
-  --disable traefik
+  --disable traefik \
+  --disable servicelb
 ```
 
 > `--write-kubeconfig-mode 644` makes kubeconfig readable without sudo.
-> Traefik is disabled so it can be installed via Helm with full control later.
+> `--disable traefik` — install Traefik via Helm for full control.
+> `--disable servicelb` — disables the built-in klipper load balancer. **Required** if using MetalLB — they conflict and klipper will prevent MetalLB from setting up iptables DNAT rules.
 
 If the service fails to start on the first run, start it manually after confirming cgroups are active:
 ```bash
@@ -63,8 +65,9 @@ Save this — you'll need it for each Pi Zero agent install.
 K3s writes the kubeconfig to `/etc/rancher/k3s/k3s.yaml`. To use `kubectl` from your laptop:
 
 ```bash
-scp warl0ck@192.168.1.x:/etc/rancher/k3s/k3s.yaml ~/.kube/config
+scp warl0ck@pi4controller.local:/etc/rancher/k3s/k3s.yaml ~/.kube/config
 # Replace 127.0.0.1 with the Pi 4's LAN IP
-sed -i 's/127.0.0.1/192.168.1.x/g' ~/.kube/config
+sed -i '' 's/127.0.0.1/192.168.1.10/g' ~/.kube/config  # macOS
+# sed -i 's/127.0.0.1/192.168.1.10/g' ~/.kube/config   # Linux
 ```
 
