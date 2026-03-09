@@ -36,7 +36,7 @@ All image releases can be downloaded from source here: https://dist1.8086.net/cl
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/set-static-ip.sh` | Set static IPv4 (192.168.1.4) on the Pi 4 via NetworkManager |
+| `scripts/set-static-ip.sh` | Set static IPv4 on the Pi 4 via NetworkManager (pass IP as argument) |
 | `scripts/setup-controller.sh` | Install CLI tools (lsd, oh-my-posh, FiraCode) and write .bash_profile |
 | `scripts/install-k3s-server.sh` | Install K3s on the Pi 4 control plane |
 | `scripts/install-k3s-agent.sh` | Install K3s agent on a Pi Zero worker |
@@ -54,8 +54,9 @@ cgroup_memory=1 cgroup_enable=memory
 sudo reboot
 # SSH back in after reboot, then continue:
 
-# 2. (Optional) Set static IP (192.168.1.x)
-curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/set-static-ip.sh | sudo bash
+# 2. (Optional) Set static IP — pass your desired IP as an argument
+curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/set-static-ip.sh -o set-static-ip.sh
+sudo bash set-static-ip.sh 192.168.1.10
 
 # 3. Install CLI tools + .bash_profile (lsd, oh-my-posh, FiraCode)
 curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/setup-controller.sh | bash
@@ -120,12 +121,12 @@ scp warl0ck@pi4controller.local:/etc/rancher/k3s/k3s.yaml ~/.kube/config
 **2. Update the server address** (the default `127.0.0.1` only works on the Pi itself):
 ```bash
 # macOS
-sed -i '' 's/127.0.0.1/192.168.1.x/g' ~/.kube/config
+sed -i '' 's/127.0.0.1/192.168.1.10/g' ~/.kube/config
 
 # Linux
-sed -i 's/127.0.0.1/192.168.1.x/g' ~/.kube/config
+sed -i 's/127.0.0.1/192.168.1.10/g' ~/.kube/config
 ```
-Replace `192.168.1.x` with the Pi 4 controller's actual IP.
+Replace `192.168.1.10` with your Pi 4 controller's actual static IP if different.
 
 **3. Install k9s:**
 ```bash
@@ -159,7 +160,7 @@ k9s
 - [Helm](https://helm.sh/) — package manager
 - [k9s](https://k9scli.io/) — terminal cluster UI
 - [MetalLB](https://metallb.universe.tf/) — bare-metal load balancer
-- [Traefik](https://traefik.io/) — ingress (bundled with K3s)
+- [Traefik](https://traefik.io/) — ingress (installed via Helm; bundled version disabled)
 - [Longhorn](https://longhorn.io/) — distributed block storage
 
 See [architecture.md](docs/architecture.md) for the full tech stack, network layout, workload placement strategy, and decisions log.
