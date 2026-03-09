@@ -42,7 +42,8 @@ echo "==> Installing K3s server on Pi 4 controller..."
 
 curl -sfL https://get.k3s.io | sh -s - server \
   --write-kubeconfig-mode 644 \
-  --disable traefik
+  --disable traefik \
+  --disable servicelb
 
 echo ""
 echo "==> Waiting for K3s to be ready..."
