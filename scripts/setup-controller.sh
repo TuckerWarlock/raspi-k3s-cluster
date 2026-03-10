@@ -43,5 +43,28 @@ eval "$(oh-my-posh init bash --config ~/.cache/oh-my-posh/themes/night-owl.omp.j
 EOF
 
 echo ""
+echo "==> Installing clusterctrl shutdown hook..."
+sudo tee /etc/systemd/system/clusterctrl-off.service > /dev/null << 'EOF'
+[Unit]
+Description=Power off ClusterHAT nodes before shutdown
+DefaultDependencies=no
+Before=shutdown.target reboot.target halt.target
+Requires=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/clusterctrl off
+RemainAfterExit=yes
+TimeoutStartSec=10
+
+[Install]
+WantedBy=halt.target reboot.target shutdown.target
+EOF
+
+sudo systemctl enable clusterctrl-off.service
+echo "    clusterctrl-off.service enabled — nodes will auto power-off on reboot/shutdown."
+
+echo ""
 echo "==> Done! Run 'source ~/.bash_profile' or open a new shell to apply changes."
 echo "    Make sure your terminal is set to use 'FiraCode Nerd Font Mono' for oh-my-posh to render correctly."
+echo "    clusterctrl-off.service will automatically power off Pi Zero nodes on reboot/shutdown."
