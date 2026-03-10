@@ -101,6 +101,27 @@ network connection whenever a node powers on.
 > **Symptom of wrong port:** Pi 4 SSH drops immediately after `clusterctrl on p1` —
 > even with a single node. Moving the micro-USB cable to a blue port fixes it.
 
+## ⚠️ Shutdown Order — Critical
+
+**Always power off Pi Zero nodes BEFORE rebooting or shutting down the Pi 4.**
+
+If the Pi 4 loses power while nodes are running, they will still be drawing current from
+the GPIO 5V rail. On the next Pi 4 boot, all nodes will immediately spike power demand
+before the Pi 4 can establish network — causing a brownout loop that prevents the
+controller from ever coming back online.
+
+```bash
+# Always run this before sudo reboot or unplugging the Pi 4:
+clusterctrl off
+sudo shutdown -h now   # or sudo reboot
+```
+
+**If you're already stuck in a brownout loop:**
+1. Unplug the Pi 4
+2. Remove all 4 Pi Zero SD cards (underside of ClusterHAT)
+3. Power on the Pi 4 alone — nodes won't boot, no power spike
+4. SSH in, then reinsert SD cards one at a time with 30s delays
+
 ## Typical Boot Sequence
 
 After the Pi 4 controller boots, run these to bring the cluster fully online:
@@ -109,7 +130,14 @@ After the Pi 4 controller boots, run these to bring the cluster fully online:
 raspi-gpio set 18 op pn dh   # enable fan GPIO (if not in rc.local/systemd yet)
 clusterctrl fan on            # start the fan
 clusterctrl hub on            # enable the USB hub (required for node connectivity)
-clusterctrl on                # power on p1–p4
+
+# Power on nodes ONE AT A TIME with 30s delays — prevents boot power spikes
+for i in 1 2 3 4; do
+  echo "==> Powering on p$i..."
+  clusterctrl on p$i
+  sleep 30
+done
+
 clusterctrl status            # verify all nodes are on
 ```
 
