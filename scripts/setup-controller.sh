@@ -35,6 +35,8 @@ export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
 # Aliases
 alias ls='lsd'
+alias cc='clusterctrl'
+alias k='kubectl'
 
 # oh-my-posh
 eval "$(oh-my-posh init bash --config ~/.cache/oh-my-posh/themes/night-owl.omp.json)"
