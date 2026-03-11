@@ -1,16 +1,9 @@
 # 05 — Ingress Controller (Traefik)
 
-K3s ships with Traefik. If you disabled it at install time, deploy it via Helm.
+K3s ships with a built-in Traefik, but we disable it at install time (`--disable traefik`)
+and install via Helm for full control over configuration.
 
-## Option A — Re-enable K3s built-in Traefik
-
-Remove `--disable traefik` from your K3s server args and restart:
-
-```bash
-sudo systemctl restart k3s
-```
-
-## Option B — Install Traefik via Helm (more control)
+## Install via Helm
 
 ```bash
 helm repo add traefik https://traefik.github.io/charts

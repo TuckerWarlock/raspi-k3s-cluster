@@ -13,6 +13,10 @@ Append to the **end of the existing single line** (no new line):
 cgroup_memory=1 cgroup_enable=memory
 ```
 
+> **⚠️ cmdline.txt must remain a single line.** Do not press Enter or add any newlines.
+> A second line or trailing newline will prevent the Pi from booting.
+> Verify with `cat /boot/firmware/cmdline.txt` — the entire file should be one line.
+
 Reboot, then SSH back in before continuing:
 ```bash
 sudo reboot

@@ -17,6 +17,8 @@ Raspberry Pi can be purchased at these authorized resellers
 - https://thepihut.com/ - ClusterHAT module and case (or you can 3d print a case)
 - https://www.canakit.com/ - Raspberry Pi Zero 2W board
 
+> **⚠️ Power Supply:** The Pi 4 requires **5V/3A via USB-C**. Use a **USB-C to USB-C cable** with a proper PD power brick — a USB-A to USB-C cable can under-deliver voltage (3.3V instead of 5V) even on a 2A brick, causing brownouts and random crashes under load.
+
 ## [ClusterHAT Images](https://clusterctrl.com/setup-software)
 
 | Device | Image |

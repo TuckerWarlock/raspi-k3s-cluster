@@ -44,7 +44,7 @@ With v1.9.6, after selecting your image and target SD card, click **"Edit Settin
 - ✅ **Hostname** — set unique names (e.g. `controller`, `p1`, `p2`, `p3`, `p4`)
 - ✅ **SSH** — enable SSH (use password authentication)
 - ✅ **Username / Password** — set your `pi` user password
-- ✅ **WiFi SSID / Password** — set on the Pi 4 controller image only (nodes connect via USB through the HAT, not WiFi)
+- ❌ **WiFi SSID / Password** — **leave blank on all images** — use ethernet only on the Pi 4 controller. WiFi causes instability and makes the Pi harder to recover if it goes offline. Pi Zero nodes connect via USB through the HAT, not WiFi.
 - ✅ **Locale / Timezone** — optional but saves time
 
 > The Pi Zero node images (p1–p4) do **not** need WiFi configured — they reach the network
@@ -64,10 +64,22 @@ to its respective Pi Zero SD card with the appropriate hostname.
 
 ## Power On the Nodes
 
+> **⚠️ Power on nodes one at a time with 30s delays.** Pi Zero 2 W nodes draw significantly
+> more power than original Pi Zeros. Powering them all on simultaneously causes boot power
+> spikes that can brownout the Pi 4 and drop network connectivity.
+
 ```bash
-clusterctrl on        # power on all nodes (p1–p4)
-clusterctrl on p1     # power on a single node
-clusterctrl status    # check node power status
+clusterctrl hub on    # enable USB hub first
+clusterctrl fan on    # start fan if using PiHut case
+
+# Power on nodes one at a time
+for i in 1 2 3 4; do
+  echo "==> Powering on p$i..."
+  clusterctrl on p$i
+  sleep 30
+done
+
+clusterctrl status    # verify all nodes are on
 ```
 
 See [01b-clusterctrl-reference.md](01b-clusterctrl-reference.md) for the full command reference including fan, hub, and LED control.
