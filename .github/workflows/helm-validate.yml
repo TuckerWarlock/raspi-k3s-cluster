@@ -1,0 +1,27 @@
+name: Helm Template Validation
+
+description: Make sure the helm YAML renders successfully
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'charts/**'
+      - 'manifests/**'
+  push: # used for testing, can be removed later
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Validate Helm Template
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup
+        run: |
+          echo install helm
+          echo install deps
+      - name: Render Templates
+        run: |
+          echo render bash script

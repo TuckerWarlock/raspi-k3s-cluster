@@ -3,6 +3,10 @@
 This document captures the hardware layout, networking design, software stack decisions,
 and workload placement strategy for this cluster.
 
+Reference these:
+- https://blog.zwindler.fr/en/2026/01/27/installing-a-cluster-hat-with-raspberry-pi-5-and-pi-zero/
+- https://dev.to/subnetsavy/how-to-build-a-home-kubernetes-cluster-with-raspberry-pi-2025-guide-204o
+
 ---
 
 ## Hardware
