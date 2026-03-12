@@ -25,8 +25,23 @@ else
 fi
 
 echo ""
-echo "==> Deleting Longhorn CRDs..."
-kubectl delete crd $(kubectl get crd 2>/dev/null | grep longhorn | awk '{print $1}') --ignore-not-found=true 2>/dev/null || true
+echo "==> Deleting Longhorn CRDs (with finalizer clearing)..."
+for crd in $(kubectl get crd 2>/dev/null | grep longhorn | awk '{print $1}'); do
+    echo "  - Clearing finalizers on $crd..."
+    kubectl patch crd "$crd" -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+    echo "  - Deleting $crd..."
+    kubectl delete crd "$crd" --grace-period=0 --force 2>/dev/null || true
+done
+
+# Verify all CRDs are gone
+if kubectl get crd 2>/dev/null | grep -q longhorn; then
+    echo "==> ⚠ Some Longhorn CRDs still present, waiting and retrying..."
+    sleep 5
+    for crd in $(kubectl get crd 2>/dev/null | grep longhorn | awk '{print $1}'); do
+        kubectl patch crd "$crd" -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+        kubectl delete crd "$crd" --grace-period=0 --force 2>/dev/null || true
+    done
+fi
 
 echo ""
 echo "==> Waiting for longhorn-system namespace to terminate..."
@@ -37,13 +52,21 @@ if kubectl get namespace longhorn-system &>/dev/null; then
     echo "==> Clearing namespace finalizers..."
     kubectl get ns longhorn-system -o json 2>/dev/null | \
         sed 's/"finalizers":\[.*\]/"finalizers":\[\]/g' | \
-        kubectl replace -f - --ignore-not-found=true || true
+        kubectl replace -f - 2>/dev/null || true
     
     # Force delete with grace period
-    kubectl delete namespace longhorn-system --grace-period=0 --force --ignore-not-found=true 2>/dev/null || true
+    echo "==> Force-deleting namespace..."
+    kubectl delete namespace longhorn-system --grace-period=0 --force 2>/dev/null || true
     
-    # Wait a moment
+    # Wait and check
     sleep 5
+    if kubectl get namespace longhorn-system &>/dev/null; then
+        echo "==> ⚠ Namespace still exists, retrying finalizer clear..."
+        kubectl get ns longhorn-system -o json 2>/dev/null | \
+            sed 's/"finalizers":\[.*\]/"finalizers":\[\]/g' | \
+            kubectl replace -f - 2>/dev/null || true
+        sleep 2
+    fi
 fi
 
 echo ""
