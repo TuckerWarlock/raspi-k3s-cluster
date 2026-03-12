@@ -16,10 +16,12 @@ It does not connect to a cluster and does not deploy anything.
 	- `traefik` (`https://traefik.github.io/charts`)
 	- `longhorn` (`https://charts.longhorn.io`)
 3. Pulls both charts locally to `/tmp/charts` for linting
-4. Lints Traefik chart using repo values:
+4. Installs kubeconform for schema validation of rendered output
+5. Lints Traefik chart using repo values:
 	- `manifests/traefik/values.yaml`
-5. Renders Traefik templates and fails if output is empty
-6. Renders Longhorn templates with cluster-specific overrides and fails if output is empty
+6. Renders Traefik templates and fails if output is empty
+7. Renders Longhorn templates with cluster-specific overrides and fails if output is empty
+8. Runs kubeconform against both rendered files in strict mode (with missing schema ignores for non-core resources)
 
 ### Trigger conditions
 
@@ -32,5 +34,6 @@ It does not connect to a cluster and does not deploy anything.
 ### Why this exists
 
 - Catches Helm syntax/template regressions early
+- Adds Kubernetes API schema checks on rendered manifests
 - Verifies repository values continue to render cleanly
 - Keeps CI focused on validation while deployment remains a separate/manual concern
