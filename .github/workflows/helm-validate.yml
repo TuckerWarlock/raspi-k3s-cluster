@@ -1,27 +1,53 @@
 name: Helm Template Validation
 
-description: Make sure the helm YAML renders successfully
-
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'charts/**'
-      - 'manifests/**'
-  push: # used for testing, can be removed later
-    branches: [ main ]
+      - "charts/**"
+      - "manifests/**"
+      - ".github/workflows/helm-validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   validate:
-    name: Validate Helm Template
+    name: Validate Helm Templates
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v5
-      - name: Setup
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Add Helm repositories
         run: |
-          echo install helm
-          echo install deps
-      - name: Render Templates
+          helm repo add traefik https://traefik.github.io/charts
+          helm repo add longhorn https://charts.longhorn.io
+          helm repo update
+
+      - name: Lint Traefik chart with repo values
         run: |
-          echo render bash script
+          helm lint traefik/traefik \
+            --values manifests/traefik/values.yaml
+
+      - name: Render Traefik templates
+        run: |
+          helm template traefik traefik/traefik \
+            --namespace traefik \
+            --values manifests/traefik/values.yaml \
+            > /tmp/traefik-rendered.yaml
+          test -s /tmp/traefik-rendered.yaml
+
+      - name: Render Longhorn templates
+        run: |
+          helm template longhorn longhorn/longhorn \
+            --namespace longhorn-system \
+            --set defaultSettings.defaultReplicaCount=1 \
+            --set nodeSelector."kubernetes\\.io/hostname"=pi4controller \
+            > /tmp/longhorn-rendered.yaml
+          test -s /tmp/longhorn-rendered.yaml
