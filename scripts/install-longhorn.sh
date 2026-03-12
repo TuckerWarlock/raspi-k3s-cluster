@@ -43,11 +43,12 @@ echo "==> Adding Longhorn Helm repository..."
 helm repo add longhorn https://charts.longhorn.io
 helm repo update
 
-echo "==> Installing Longhorn via Helm..."
+echo "==> Installing Longhorn via Helm (constrained to pi4controller)..."
 helm install longhorn longhorn/longhorn \
   --namespace longhorn-system \
   --create-namespace \
   --set defaultSettings.defaultReplicaCount=1 \
+  --set nodeSelector."kubernetes\.io/hostname"=pi4controller \
   --wait \
   --timeout 5m
 
