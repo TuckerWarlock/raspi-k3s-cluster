@@ -2,6 +2,17 @@
 
 This repository provisions and documents a K3s Kubernetes cluster on a Raspberry Pi 4 controller with four Pi Zero 2 W worker nodes via a ClusterHAT v2.5.
 
+## Setup Progress
+
+✅ **Completed:**
+- 01 — ClusterHAT hardware setup
+- 02 — K3s server (control plane)
+- 03 — K3s agents (p1–p4 workers)
+- 04 — MetalLB (load balancer)
+- 05 — Traefik ingress controller
+
+🔄 **Next:** 06 — Longhorn (distributed block storage)
+
 ## Repo Structure
 
 ```
