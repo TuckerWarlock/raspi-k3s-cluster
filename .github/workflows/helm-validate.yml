@@ -30,14 +30,20 @@ jobs:
           helm repo add longhorn https://charts.longhorn.io
           helm repo update
 
+      - name: Pull charts locally for linting
+        run: |
+          mkdir -p /tmp/charts
+          helm pull traefik/traefik --untar --untardir /tmp/charts
+          helm pull longhorn/longhorn --untar --untardir /tmp/charts
+
       - name: Lint Traefik chart with repo values
         run: |
-          helm lint traefik/traefik \
+          helm lint /tmp/charts/traefik \
             --values manifests/traefik/values.yaml
 
       - name: Render Traefik templates
         run: |
-          helm template traefik traefik/traefik \
+          helm template traefik /tmp/charts/traefik \
             --namespace traefik \
             --values manifests/traefik/values.yaml \
             > /tmp/traefik-rendered.yaml
@@ -45,7 +51,7 @@ jobs:
 
       - name: Render Longhorn templates
         run: |
-          helm template longhorn longhorn/longhorn \
+          helm template longhorn /tmp/charts/longhorn \
             --namespace longhorn-system \
             --set defaultSettings.defaultReplicaCount=1 \
             --set nodeSelector."kubernetes\\.io/hostname"=pi4controller \
