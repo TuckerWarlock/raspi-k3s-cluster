@@ -49,6 +49,10 @@ helm install longhorn longhorn/longhorn \
   --create-namespace \
   --set defaultSettings.defaultReplicaCount=1 \
   --set nodeSelector."kubernetes\.io/hostname"=pi4controller \
+  --set tolerations[0].key=longhorn \
+  --set tolerations[0].operator=Equal \
+  --set tolerations[0].value=false \
+  --set tolerations[0].effect=NoSchedule \
   --wait \
   --timeout 5m
 
