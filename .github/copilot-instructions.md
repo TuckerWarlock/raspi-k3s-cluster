@@ -10,8 +10,9 @@ This repository provisions and documents a K3s Kubernetes cluster on a Raspberry
 - 03 — K3s agents (p1–p4 workers)
 - 04 — MetalLB (load balancer)
 - 05 — Traefik ingress controller
+- 06 — Longhorn (distributed block storage)
 
-🔄 **Next:** 06 — Longhorn (distributed block storage)
+🔄 **Next:** What's next? (Check docs/ for additional setup steps)
 
 ## Repo Structure
 
