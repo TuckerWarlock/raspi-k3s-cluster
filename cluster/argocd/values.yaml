@@ -1,0 +1,22 @@
+# ArgoCD Helm Values
+# 
+# Install with:
+#   helm repo add argo https://argoproj.github.io/argo-helm
+#   helm install argocd argo/argo-cd \
+#     --namespace argocd --create-namespace \
+#     --values cluster/argocd/values.yaml
+
+server:
+  service:
+    type: ClusterIP
+  
+persistence:
+  enabled: true
+  storageClassName: longhorn
+  size: 2Gi
+
+dex:
+  enabled: false
+
+# Controller and other components use default replicas
+# Adjust if needed for your cluster size
