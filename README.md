@@ -36,14 +36,18 @@ All image releases can be downloaded from source here: https://dist1.8086.net/cl
 
 ## Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `scripts/set-static-ip.sh` | Set static IPv4 on the Pi 4 via NetworkManager (pass IP as argument) |
-| `scripts/setup-controller.sh` | Install CLI tools (lsd, oh-my-posh, FiraCode) and write .bash_profile |
-| `scripts/install-k3s-server.sh` | Install K3s on the Pi 4 control plane |
-| `scripts/install-k3s-agent.sh` | Install K3s agent on a Pi Zero worker |
-| `scripts/install-helm.sh` | Install Helm on the Pi 4 |
-| `scripts/uninstall-k3s.sh` | Tear down K3s (server or agent) |
+| Script | Purpose | Location |
+|--------|---------|----------|
+| `bootstrap/scripts/set-static-ip.sh` | Set static IPv4 on the Pi 4 via NetworkManager (pass IP as argument) |
+| `bootstrap/scripts/setup-controller.sh` | Install CLI tools and configure Pi 4 controller |
+| `bootstrap/scripts/setup-agents.sh` | Install CLI tools on Pi Zero workers |
+| `bootstrap/scripts/install-k3s-server.sh` | Install K3s control plane on Pi 4 |
+| `bootstrap/scripts/install-k3s-agent.sh` | Install K3s agent on Pi Zero workers |
+| `bootstrap/scripts/install-helm.sh` | Install Helm on Pi 4 |
+| `bootstrap/scripts/install-longhorn.sh` | Install Longhorn (distributed storage) |
+| `bootstrap/scripts/install-argocd.sh` | Install ArgoCD (GitOps) |
+| `bootstrap/scripts/cleanup-longhorn.sh` | Clean up and fully remove Longhorn |
+| `bootstrap/scripts/uninstall-k3s.sh` | Tear down K3s (server or agent) |
 
 ## Setup Server - Pi 4 Controller
 
@@ -146,23 +150,99 @@ k9s
 
 > If the kubeconfig on the Pi is ever regenerated (e.g. after a K3s reinstall), re-run the `scp` command to pull the updated file.
 
-## Setup Order
+## Repo Structure
 
-1. [ClusterHAT OS & CNAT setup](docs/01-clusterhat-setup.md)
-   - [clusterctrl command reference](docs/01b-clusterctrl-reference.md)
-2. [K3s server on Pi 4](docs/02-k3s-server.md)
-3. [K3s agents on Pi Zeros](docs/03-k3s-agents.md)
-4. [MetalLB load balancer](docs/04-metallb.md)
-5. [Ingress controller](docs/05-ingress.md)
-6. [Storage with Longhorn](docs/06-longhorn.md)
+```
+raspi-k3s-cluster/
+├── bootstrap/                           # One-time setup (manual, hands-off after)
+│   ├── scripts/                         # Installation scripts
+│   │   ├── install-argocd.sh           # ArgoCD (GitOps) setup
+│   │   ├── install-helm.sh             # Helm installation
+│   │   ├── install-k3s-agent.sh        # K3s agent on workers
+│   │   ├── install-k3s-server.sh       # K3s control plane
+│   │   ├── install-longhorn.sh         # Longhorn storage
+│   │   ├── cleanup-longhorn.sh         # Longhorn cleanup utility
+│   │   ├── set-static-ip.sh            # Static IP setup
+│   │   ├── setup-agents.sh             # Pi Zero agent setup
+│   │   ├── setup-controller.sh         # Pi 4 controller setup
+│   │   └── uninstall-k3s.sh            # K3s teardown
+│   └── docs/                            # Setup guides & architecture
+│       ├── 01-clusterhat-setup.md      # ClusterHAT hardware & OS
+│       ├── 01b-clusterctrl-reference.md # clusterctrl command reference
+│       ├── 02-k3s-server.md            # K3s control plane setup
+│       ├── 03-k3s-agents.md            # K3s worker setup
+│       ├── 04-metallb.md               # Load balancer setup
+│       ├── 05-ingress.md               # Traefik ingress setup
+│       ├── 06-longhorn.md              # Longhorn storage setup
+│       └── architecture.md             # Detailed architecture & decisions
+│
+├── cluster/                             # Kubernetes manifests (managed by ArgoCD)
+│   ├── argocd/                         # ArgoCD configuration
+│   │   ├── namespace.yaml              # argocd namespace
+│   │   ├── application-cluster.yaml    # Cluster self-management Application
+│   │   ├── ingress.yaml                # ArgoCD UI Ingress (Traefik)
+│   │   └── values.yaml                 # Helm values reference
+│   └── core-system/                    # Core cluster components
+│       ├── metallb/                    # Load balancer
+│       │   ├── ipaddresspool.yaml      # IP pool configuration
+│       │   └── l2advertisement.yaml    # L2 advertisement
+│       ├── traefik/                    # Ingress controller
+│       │   ├── values.yaml             # Helm values
+│       │   └── traefik-test-ingress.yaml
+│       └── longhorn/                   # Distributed block storage
+│           └── test-pvc.yaml           # Test PVC (for verification)
+│
+├── workloads/                          # User applications (managed by ArgoCD)
+│   └── (future applications)
+│
+├── config/                             # Configuration & examples
+│   └── (kubeconfig, templates, etc.)
+│
+├── .github/
+│   ├── copilot-instructions.md         # Copilot CLI context
+│   └── workflows/                      # CI/CD pipelines
+│
+├── README.md                           # This file
+└── .gitignore
+```
+
+### Directory Purposes
+
+| Directory | Purpose | Managed By |
+|-----------|---------|-----------|
+| **bootstrap/** | One-time setup scripts & docs | Manual (don't run after setup) |
+| **cluster/** | Infrastructure-as-code for cluster | ArgoCD (auto-synced from Git) |
+| **workloads/** | User applications & services | ArgoCD (auto-synced from Git) |
+| **config/** | Kubeconfig, templates, examples | Manual |
+
 
 ## Tools Used
 
+### Core Infrastructure
 - [K3s](https://k3s.io/) — lightweight Kubernetes
 - [Helm](https://helm.sh/) — package manager
-- [k9s](https://k9scli.io/) — terminal cluster UI
-- [MetalLB](https://metallb.universe.tf/) — bare-metal load balancer
-- [Traefik](https://traefik.io/) — ingress (installed via Helm; bundled version disabled)
-- [Longhorn](https://longhorn.io/) — distributed block storage
 
-See [architecture.md](docs/architecture.md) for the full tech stack, network layout, workload placement strategy, and decisions log.
+### Cluster Components
+- [MetalLB](https://metallb.universe.tf/) — bare-metal load balancer
+- [Traefik](https://traefik.io/) — ingress controller (installed via Helm)
+- [Longhorn](https://longhorn.io/) — distributed block storage
+- [ArgoCD](https://argoproj.github.io/cd/) — GitOps continuous deployment
+
+### Administration & Monitoring
+- [k9s](https://k9scli.io/) — terminal cluster UI
+- [kubectl](https://kubernetes.io/docs/reference/kubectl/) — Kubernetes CLI
+
+See [architecture.md](bootstrap/docs/architecture.md) for the full tech stack, network layout, workload placement strategy, and decisions log.
+
+## Setup Order
+
+Follow these guides in order to set up your cluster:
+
+1. [ClusterHAT OS & CNAT setup](bootstrap/docs/01-clusterhat-setup.md)
+   - [clusterctrl command reference](bootstrap/docs/01b-clusterctrl-reference.md)
+2. [K3s server on Pi 4](bootstrap/docs/02-k3s-server.md)
+3. [K3s agents on Pi Zeros](bootstrap/docs/03-k3s-agents.md)
+4. [MetalLB load balancer](bootstrap/docs/04-metallb.md)
+5. [Ingress controller (Traefik)](bootstrap/docs/05-ingress.md)
+6. [Storage with Longhorn](bootstrap/docs/06-longhorn.md)
+7. ArgoCD (GitOps) — run: `bash bootstrap/scripts/install-argocd.sh`
