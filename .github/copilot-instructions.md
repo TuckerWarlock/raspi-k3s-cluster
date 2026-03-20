@@ -11,18 +11,60 @@ This repository provisions and documents a K3s Kubernetes cluster on a Raspberry
 - 04 — MetalLB (load balancer)
 - 05 — Traefik ingress controller
 - 06 — Longhorn (distributed block storage)
+- 07 — ArgoCD (GitOps management)
 
-🔄 **Next:** What's next? (Check docs/ for additional setup steps)
+🔄 **In Progress:**
+- 08 — Prometheus + Grafana (monitoring)
+- 09 — Loki + Promtail (logging)
+- 10 — Sample workload (GitOps validation)
+- 11 — Longhorn backup strategy
+- (12 — cert-manager + Let's Encrypt - deferred)
 
 ## Repo Structure
 
 ```
-scripts/          # Bash setup scripts (run on Pi hardware)
-manifests/        # Helm values and raw Kubernetes manifests
-  metallb/        # IPAddressPool + L2Advertisement
-  traefik/        # Helm values.yaml
-docs/             # Step-by-step setup docs (01 through 06)
+bootstrap/
+  scripts/          # Setup scripts (run on Pi hardware)
+    install-*.sh   # K3s, Helm, Longhorn, ArgoCD installers
+  docs/             # Step-by-step setup guides (01-11)
+cluster/
+  core-system/      # Core Kubernetes infrastructure
+    metallb/        # Load balancer (IPAddressPool + L2Advertisement)
+    traefik/        # Ingress controller (Helm values)
+    longhorn/       # Block storage (Helm values + test PVC)
+  argocd/           # GitOps management (Application CRD + Ingress)
+  monitoring/       # Prometheus + Grafana (TBD: step 08)
+  logging/          # Loki + Promtail (TBD: step 09)
+  workloads/        # User applications (TBD: step 10)
+README.md           # Project overview
 ```
+
+## Implementation Notes (Steps 08-11)
+
+**Step 08 — Prometheus + Grafana:**
+- Prometheus deployed on pi4controller with 15-day retention (Longhorn PVC)
+- Node-exporter DaemonSet on all nodes (lightweight metric collection)
+- Grafana dashboard on controller, persisted to Longhorn
+- Traefik Ingress: `prometheus.cluster.local`, `grafana.cluster.local`
+
+**Step 09 — Loki + Promtail:**
+- Loki (single-process mode) on controller, Longhorn chunk storage
+- Promtail agents on all nodes, logs → Loki
+- Access via Grafana datasource or standalone UI
+
+**Step 10 — Sample Workload:**
+- Deploy test app (e.g., nginx with PersistentVolume)
+- Verify ArgoCD auto-syncs from cluster/ folder
+- Proves full GitOps pipeline functional
+
+**Step 11 — Longhorn Backup:**
+- Configure backup targets (local or S3)
+- Set snapshot retention policies
+- Document restore procedures
+
+**Step 12 — Certificates (Deferred):**
+- Currently: self-signed certs via Traefik (working fine, Firefox shows warning)
+- Future: cert-manager + Let's Encrypt when external DNS available
 
 ## Network Layout
 
