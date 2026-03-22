@@ -21,6 +21,13 @@ spec:
   - name: busybox
     image: busybox:latest
     command: ['sh', '-c', 'echo "Longhorn test" > /mnt/test.txt && sleep 3600']
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
     volumeMounts:
     - name: storage
       mountPath: /mnt
