@@ -83,7 +83,9 @@ jobs:
       - name: Validate manifests with kubeconform
         if: ${{ inputs.validator == 'kubeconform' }}
         run: |
-          find cluster -type f \( -name "*.yaml" -o -name "*.yml" \) -print > /tmp/raw-manifest-files.txt
+          find cluster -type f \( -name "*.yaml" -o -name "*.yml" \) \
+            ! -name "values.yaml" \
+            -print > /tmp/raw-manifest-files.txt
           test -s /tmp/raw-manifest-files.txt
 
           xargs -a /tmp/raw-manifest-files.txt /tmp/kubeconform \
