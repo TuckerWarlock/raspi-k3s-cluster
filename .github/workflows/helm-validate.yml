@@ -15,25 +15,15 @@ permissions:
 
 jobs:
   helm_validate:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v5
-
-    - name: Helm and Schema Validation
-      uses: ./.github/workflows/reusable-manifest-validation.yml
-      with:
-        validator: kubeconform
+    name: Helm and Schema Validation
+    uses: TuckerWarlock/raspi-k3s-cluster/.github/workflows/reusable-manifest-validation.yml@main
+    with:
+      validator: kubeconform
 
   pluto_validate:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v5
-
-    - name: API Deprecation Validation
-      uses: ./.github/workflows/reusable-manifest-validation.yml
-      with:
-        validator: pluto
-        pluto_version: "5.23.5"
-        k8s_target_version: "v1.31.0"
+    name: API Deprecation Validation
+    uses: TuckerWarlock/raspi-k3s-cluster/.github/workflows/reusable-manifest-validation.yml@main
+    with:
+      validator: pluto
+      pluto_version: "5.23.5"
+      k8s_target_version: "v1.31.0"
