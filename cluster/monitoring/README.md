@@ -4,20 +4,34 @@ Lightweight Prometheus + Grafana monitoring stack.
 
 See [bootstrap/docs/08-prometheus-grafana-monitoring.md](../../bootstrap/docs/08-prometheus-grafana-monitoring.md) for complete setup instructions.
 
-## Files
+## Structure
 
-- `namespace.yaml` — Monitoring namespace
-- `prometheus-config.yaml` — Prometheus scrape configuration (ConfigMap)
-- `prometheus-rbac.yaml` — ServiceAccount, ClusterRole, ClusterRoleBinding
-- `prometheus-statefulset.yaml` — Prometheus StatefulSet + Services + PVC
-- `grafana.yaml` — Grafana Deployment with provisioned Prometheus datasource + PVC
-- `ingress.yaml` — Traefik Ingress routes (prometheus.cluster.local, grafana.cluster.local)
+```
+monitoring/
+├── namespace.yaml    # Shared monitoring namespace
+├── prometheus/       # Prometheus StatefulSet
+│   ├── kustomization.yaml
+│   ├── namespace.yaml
+│   ├── prometheus-rbac.yaml
+│   ├── prometheus-config.yaml
+│   └── prometheus-statefulset.yaml
+├── grafana/          # Grafana Deployment
+│   ├── kustomization.yaml
+│   ├── namespace.yaml
+│   └── grafana.yaml
+└── README.md
+```
 
 ## Deployment
 
-Deploy all manifests:
+Managed by ArgoCD Applications:
+- `cluster/argocd/addons/prometheus.yaml` → deploys prometheus/ via Kustomization
+- `cluster/argocd/addons/grafana.yaml` → deploys grafana/ via Kustomization
+
+Manual deployment:
 ```bash
-kubectl apply -f cluster/monitoring/
+kubectl apply -k cluster/monitoring/prometheus/
+kubectl apply -k cluster/monitoring/grafana/
 ```
 
 Verify:

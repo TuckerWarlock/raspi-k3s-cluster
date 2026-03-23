@@ -6,4 +6,5 @@ resources:
   - metallb.yaml
   - traefik.yaml
   - longhorn.yaml
-  - monitoring.yaml
+  - prometheus.yaml
+  - grafana.yaml

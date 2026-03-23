@@ -11,12 +11,13 @@ argocd/
 ├── root-application.yaml       # Root Application CRD (deploys everything)
 ├── argocd-values.yaml          # Helm values for ArgoCD itself
 ├── argocd-ingress.yaml         # Ingress for ArgoCD server UI
-├── controller-addons/          # System services on pi4controller
+├── addons/                     # System services on pi4controller
 │   ├── kustomization.yaml
 │   ├── metallb.yaml            # MetalLB Application
 │   ├── traefik.yaml            # Traefik Application
 │   ├── longhorn.yaml           # Longhorn Application
-│   └── monitoring.yaml         # Prometheus + Grafana Application
+│   ├── prometheus.yaml         # Prometheus Application
+│   └── grafana.yaml            # Grafana Application
 └── workloads/                  # User applications (pi zero workers)
     ├── kustomization.yaml
     └── (add your apps here)
@@ -94,7 +95,7 @@ Commit and push. ArgoCD will auto-sync within seconds.
 
 ## Separation Strategy
 
-- **controller-addons/** — system infrastructure (MetalLB, Traefik, Longhorn, Monitoring)
+- **addons/** — system infrastructure (MetalLB, Traefik, Longhorn, Prometheus, Grafana)
   - All pinned to `pi4controller` via nodeSelector
   - Resources reserved for cluster health
   
