@@ -11,6 +11,13 @@
 
 set -euo pipefail
 
+echo "==> Installing open-iscsi (required for Longhorn)..."
+sudo apt update
+sudo apt install -y open-iscsi nfs-common
+sudo systemctl enable --now iscsid
+echo "==> ✓ open-iscsi installed"
+
+echo ""
 echo "==> Installing Helm..."
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 

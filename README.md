@@ -35,7 +35,7 @@ raspi-k3s-cluster/
 ├── bootstrap/                           # One-time setup (manual, hands-off after)
 │   ├── scripts/                         # Installation scripts
 │   │   ├── README.md                   # Script reference
-│   │   ├── install-helm.sh             # Helm & Helmfile installation
+│   │   ├── install-helm.sh             # Helm, Helmfile, open-iscsi
 │   │   ├── install-k3s-agent.sh        # K3s agent on workers
 │   │   ├── install-k3s-server.sh       # K3s control plane
 │   │   ├── set-static-ip.sh            # Static IP setup
