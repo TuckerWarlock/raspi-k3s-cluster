@@ -28,16 +28,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Render all Helm releases with helmfile
-        id: helmfile_template
+      - name: Setup helmfile
         uses: helmfile/helmfile-action@v2
         with:
           helmfile-version: v1.4.2
-          helmfile-args: template
+          helmfile-args: version
 
-      - name: Save rendered Helm manifests
+      - name: Render all Helm releases
         run: |
-          printf '%s\n' "${{ steps.helmfile_template.outputs.helmfile-stdout }}" > /tmp/all-rendered.yaml
+          helmfile template > /tmp/all-rendered.yaml
           test -s /tmp/all-rendered.yaml
 
       - name: Setup kubeconform and kustomize
@@ -58,10 +57,11 @@ jobs:
             -print > /tmp/raw-manifest-files.txt
           test -s /tmp/raw-manifest-files.txt
 
-          xargs -a /tmp/raw-manifest-files.txt kubeconform \
+          xargs kubeconform \
             -strict \
             -summary \
-            -ignore-missing-schemas
+            -ignore-missing-schemas \
+            < /tmp/raw-manifest-files.txt
 
           kubeconform \
             -strict \

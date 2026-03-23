@@ -20,8 +20,8 @@ This directory contains validation-only CI workflows. They do not connect to a l
 ## Validation Flow
 
 1. Checkout repository.
-2. Render all Helm releases via `helmfile/helmfile-action` from `helmfile.yaml`.
-3. Save rendered output to `/tmp/all-rendered.yaml`.
+2. Install `helmfile` via `helmfile/helmfile-action`.
+3. Render all Helm releases from `helmfile.yaml` using `helmfile template > /tmp/all-rendered.yaml`.
 4. For `kubeconform` job:
 	 - Install tools using `yokawasa/action-setup-kube-tools`.
 	 - Validate raw manifests under `cluster/` (excluding `values.yaml`).

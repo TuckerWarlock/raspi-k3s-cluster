@@ -1,5 +1,9 @@
 # raspi-k3s-cluster
 
+[![Cluster Validation](https://github.com/TuckerWarlock/raspi-k3s-cluster/actions/workflows/helm-validate.yml/badge.svg)](https://github.com/TuckerWarlock/raspi-k3s-cluster/actions/workflows/helm-validate.yml)
+
+[![Dependabot Updates](https://github.com/TuckerWarlock/raspi-k3s-cluster/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/TuckerWarlock/raspi-k3s-cluster/actions/workflows/dependabot/dependabot-updates)
+
 K3s Kubernetes cluster running on a Raspberry Pi 4 controller with four Pi Zero 2 W worker nodes via a [ClusterHAT](https://clusterctrl.com/).
 
 ## [Hardware](https://clusterctrl.com/setup-assembly)
