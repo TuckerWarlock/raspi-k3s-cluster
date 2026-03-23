@@ -63,3 +63,5 @@ scp warl0ck@pi4controller.local:/etc/rancher/k3s/k3s.yaml ~/.kube/config
 sed -i '' 's/127.0.0.1/192.168.1.10/g' ~/.kube/config  # macOS
 # sed -i 's/127.0.0.1/192.168.1.10/g' ~/.kube/config   # Linux
 ```
+
+> **⚠️ After each K3s reinstall, re-run the above commands.** The TLS certificates are regenerated on each install, and your kubeconfig will have a stale certificate. You'll see errors like `x509: certificate signed by unknown authority` if you don't refresh it.
