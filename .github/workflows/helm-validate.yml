@@ -16,14 +16,13 @@ permissions:
 jobs:
   helm_validate:
     name: Helm and Schema Validation
-    uses: TuckerWarlock/raspi-k3s-cluster/.github/workflows/reusable-manifest-validation.yml@main
+    uses: ./.github/workflows/reusable-manifest-validation.yml
     with:
       validator: kubeconform
 
   pluto_validate:
     name: API Deprecation Validation
-    uses: TuckerWarlock/raspi-k3s-cluster/.github/workflows/reusable-manifest-validation.yml@main
+    uses: ./.github/workflows/reusable-manifest-validation.yml
     with:
       validator: pluto
-      pluto_version: "5.23.5"
       k8s_target_version: "v1.31.0"

@@ -84,6 +84,22 @@ K3s agents use `--node-ip 172.19.181.x --flannel-iface usb0` so pod traffic rout
 - **p1–p4** — workers labeled `node-role.kubernetes.io/worker=worker` and `hardware=pi-zero-2w`; 512MB RAM each — keep workloads light
 - Traefik and MetalLB speakers are restricted to pi4controller (Pi Zeros have no LAN interface for L2 advertisement)
 
+## Documentation Requirements
+
+Every change to this repo must have supporting documentation. The rule is simple: if you add or change something, update the relevant doc alongside it in the same commit/PR.
+
+| Change type | Required documentation |
+|---|---|
+| New or updated Kubernetes manifest | Update `README.md` repo structure if a new directory is added; add/update the relevant setup guide in `bootstrap/docs/` if the change affects a setup step |
+| New or updated Helm values | Comment the values file explaining non-obvious settings; update the corresponding `bootstrap/docs/` guide |
+| New or updated GitHub Actions workflow | Add a comment block at the top of the workflow file describing what it does and when it runs; update `README.md` if it affects the CI story |
+| New or updated bootstrap script | Update the script's internal usage header (`cat << 'EOF' ... EOF`); update the corresponding `bootstrap/docs/` step guide; update the scripts table in `README.md` |
+| New `local_ci.sh` behaviour | Keep the script's top-of-file comment block accurate |
+| New tooling added (e.g. Pluto, kubeconform) | Add it to the **Tools Used** section in `README.md` |
+| Architecture or network changes | Update `bootstrap/docs/architecture.md` and the network table in `README.md` |
+
+When Copilot makes any of the above changes, it must also apply the corresponding documentation update in the same response — do not leave documentation as a follow-up suggestion.
+
 ## Script Conventions
 
 All scripts use `#!/usr/bin/env bash` and `set -euo pipefail`. Output uses `==> ` section prefixes. Heredocs use `<< 'EOF'` (no variable expansion inside).

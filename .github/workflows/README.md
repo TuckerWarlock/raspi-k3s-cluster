@@ -1,39 +1,53 @@
-# GitHub Action workflows
+# GitHub Workflows
 
-Use these as reference:
-- https://spacelift.io/blog/github-actions-kubernetes
-- https://citizix.com/how-to-deploy-with-argocd-using-github-actions-and-helm-templating/
+This directory contains validation-only CI workflows. They do not connect to a live cluster and do not deploy anything.
 
-## helm-validate.yml
+## Files
 
-Validation-only CI workflow for Helm charts and values in this repository.
-It does not connect to a cluster and does not deploy anything.
+- `helm-validate.yml`
+	- Entry workflow for pull requests and manual runs.
+	- Defines two jobs:
+		- `helm_validate` (schema validation)
+		- `pluto_validate` (API deprecation validation)
+	- Calls the reusable workflow for both jobs.
 
-### What it validates
+- `reusable-manifest-validation.yml`
+	- Reusable workflow containing shared setup and validation logic.
+	- Accepts inputs:
+		- `validator`: `kubeconform` or `pluto`
+		- `k8s_target_version`: target Kubernetes version for Pluto checks
 
-1. Installs Helm in the runner
-2. Adds and updates chart repos:
-	- `traefik` (`https://traefik.github.io/charts`)
-	- `longhorn` (`https://charts.longhorn.io`)
-3. Pulls both charts locally to `/tmp/charts` for linting
-4. Installs kubeconform for schema validation of rendered output
-5. Lints Traefik chart using repo values:
-	- `manifests/traefik/values.yaml`
-6. Renders Traefik templates and fails if output is empty
-7. Renders Longhorn templates with cluster-specific overrides and fails if output is empty
-8. Runs kubeconform against both rendered files in strict mode (with missing schema ignores for non-core resources)
+## Validation Flow
 
-### Trigger conditions
+1. Checkout repository.
+2. Render all Helm releases via `helmfile/helmfile-action` from `helmfile.yaml`.
+3. Save rendered output to `/tmp/all-rendered.yaml`.
+4. For `kubeconform` job:
+	 - Install tools using `yokawasa/action-setup-kube-tools`.
+	 - Validate raw manifests under `cluster/` (excluding `values.yaml`).
+	 - Validate rendered Helm manifests in strict mode.
+5. For `pluto` job:
+	 - Install Pluto using `FairwindsOps/pluto/github-action@master`.
+	 - Check both raw manifests and rendered manifests for deprecated/removed APIs.
 
-- `pull_request` to `main` when changes affect:
-  - `charts/**`
-  - `manifests/**`
-  - `.github/workflows/helm-validate.yml`
+## Trigger Conditions
+
+`helm-validate.yml` runs on:
+
+- `pull_request` to `main` when files change in:
+	- `cluster/**`
+	- `bootstrap/scripts/install-argocd.sh`
+	- `.github/workflows/helm-validate.yml`
+	- `.github/workflows/reusable-manifest-validation.yml`
 - `workflow_dispatch` for manual runs
 
-### Why this exists
+## Version Pinning
 
-- Catches Helm syntax/template regressions early
-- Adds Kubernetes API schema checks on rendered manifests
-- Verifies repository values continue to render cleanly
-- Keeps CI focused on validation while deployment remains a separate/manual concern
+- Prefer major-version pins for GitHub Actions where available.
+- Some actions may require full tag pins when a major alias is not published.
+
+## Why This Exists
+
+- Catch rendering and schema regressions early.
+- Detect Kubernetes API deprecations before cluster upgrades.
+- Keep CI portable as new Helm releases are added by updating `helmfile.yaml` only.

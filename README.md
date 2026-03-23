@@ -228,6 +228,11 @@ raspi-k3s-cluster/
 - [Longhorn](https://longhorn.io/) — distributed block storage
 - [ArgoCD](https://argoproj.github.io/cd/) — GitOps continuous deployment
 
+### CI / Validation
+- [Helmfile](https://helmfile.readthedocs.io/) — declarative Helm release manager; drives chart rendering in CI
+- [kubeconform](https://github.com/yannh/kubeconform) — Kubernetes manifest schema validation
+- [Pluto](https://pluto.docs.fairwinds.com/) — Kubernetes API deprecation detection
+
 ### Administration & Monitoring
 - [k9s](https://k9scli.io/) — terminal cluster UI
 - [kubectl](https://kubernetes.io/docs/reference/kubectl/) — Kubernetes CLI

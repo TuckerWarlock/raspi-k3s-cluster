@@ -1,3 +1,7 @@
+# Reusable CI workflow for manifest validation.
+# Called by helm-validate.yml to run:
+# - kubeconform schema checks
+# - Pluto API deprecation checks
 name: Reusable Manifest Validation
 
 on:
@@ -6,11 +10,6 @@ on:
       validator:
         description: Validation engine to run (kubeconform or pluto)
         required: true
-        type: string
-      pluto_version:
-        description: Pluto version for API deprecation checks
-        required: false
-        default: "5.23.5"
         type: string
       k8s_target_version:
         description: Target Kubernetes version used by Pluto
@@ -29,56 +28,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Set up Helm
-        uses: TuckerWarlock/setup-helm@v5
+      - name: Render all Helm releases with helmfile
+        id: helmfile_template
+        uses: helmfile/helmfile-action@v2
+        with:
+          helmfile-version: v1.4.2
+          helmfile-args: template
 
-      - name: Add Helm repositories
+      - name: Save rendered Helm manifests
         run: |
-          helm repo add traefik https://traefik.github.io/charts
-          helm repo add longhorn https://charts.longhorn.io
-          helm repo add argo https://argoproj.github.io/argo-helm
-          helm repo update
+          printf '%s\n' "${{ steps.helmfile_template.outputs.helmfile-stdout }}" > /tmp/all-rendered.yaml
+          test -s /tmp/all-rendered.yaml
 
-      - name: Pull charts locally
-        run: |
-          mkdir -p /tmp/charts
-          helm pull traefik/traefik --untar --untardir /tmp/charts
-          helm pull longhorn/longhorn --untar --untardir /tmp/charts
-          helm pull argo/argo-cd --untar --untardir /tmp/charts
-
-      - name: Render Helm templates
-        run: |
-          helm template traefik /tmp/charts/traefik \
-            --namespace traefik \
-            --values cluster/core-system/traefik/values.yaml \
-            > /tmp/traefik-rendered.yaml
-          test -s /tmp/traefik-rendered.yaml
-
-          helm template longhorn /tmp/charts/longhorn \
-            --namespace longhorn-system \
-            --set defaultSettings.defaultReplicaCount=1 \
-            --set nodeSelector."kubernetes\\.io/hostname"=pi4controller \
-            > /tmp/longhorn-rendered.yaml
-          test -s /tmp/longhorn-rendered.yaml
-
-          helm template argocd /tmp/charts/argo-cd \
-            --namespace argocd \
-            --set server.service.type=ClusterIP \
-            --set persistence.enabled=true \
-            --set persistence.storageClassName=longhorn \
-            --set persistence.size=2Gi \
-            --set dex.enabled=false \
-            > /tmp/argocd-rendered.yaml
-          test -s /tmp/argocd-rendered.yaml
-
-      - name: Install kubeconform
+      - name: Setup kubeconform and kustomize
         if: ${{ inputs.validator == 'kubeconform' }}
-        run: |
-          KUBECONFORM_VERSION=v0.6.7
-          curl -fsSL -o /tmp/kubeconform.tar.gz \
-            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
-          tar -xzf /tmp/kubeconform.tar.gz -C /tmp kubeconform
-          /tmp/kubeconform -v
+        uses: yokawasa/action-setup-kube-tools@v0.13.3
+        with:
+          setup-tools: |
+            kubeconform
+            kustomize
+          kubeconform: "0.6.7"
+          kustomize: "5.7.1"
 
       - name: Validate manifests with kubeconform
         if: ${{ inputs.validator == 'kubeconform' }}
@@ -88,38 +58,30 @@ jobs:
             -print > /tmp/raw-manifest-files.txt
           test -s /tmp/raw-manifest-files.txt
 
-          xargs -a /tmp/raw-manifest-files.txt /tmp/kubeconform \
+          xargs -a /tmp/raw-manifest-files.txt kubeconform \
             -strict \
             -summary \
             -ignore-missing-schemas
 
-          /tmp/kubeconform \
+          kubeconform \
             -strict \
             -summary \
             -ignore-missing-schemas \
-            /tmp/traefik-rendered.yaml \
-            /tmp/longhorn-rendered.yaml \
-            /tmp/argocd-rendered.yaml
+            /tmp/all-rendered.yaml
 
-      - name: Install Pluto
+      - name: Download Pluto
         if: ${{ inputs.validator == 'pluto' }}
-        run: |
-          curl -fsSL -o /tmp/pluto.tar.gz \
-            "https://github.com/FairwindsOps/pluto/releases/download/v${{ inputs.pluto_version }}/pluto_${{ inputs.pluto_version }}_linux_amd64.tar.gz"
-          tar -xzf /tmp/pluto.tar.gz -C /tmp pluto
-          /tmp/pluto version
+        uses: FairwindsOps/pluto/github-action@master
 
       - name: Check manifests with Pluto
         if: ${{ inputs.validator == 'pluto' }}
         run: |
-          /tmp/pluto detect-files \
+          pluto detect-files \
             --output wide \
             --target-versions "k8s=${{ inputs.k8s_target_version }}" \
             -d cluster
 
-          /tmp/pluto detect-files \
+          pluto detect-files \
             --output wide \
             --target-versions "k8s=${{ inputs.k8s_target_version }}" \
-            /tmp/traefik-rendered.yaml \
-            /tmp/longhorn-rendered.yaml \
-            /tmp/argocd-rendered.yaml
+            /tmp/all-rendered.yaml
