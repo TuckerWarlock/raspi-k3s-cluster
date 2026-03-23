@@ -75,6 +75,12 @@ kubectl label node p1 p2 p3 p4 node-role.kubernetes.io/worker=worker
 kubectl label node p1 p2 p3 p4 hardware=pi-zero-2w
 ```
 
+These labels enable workload scheduling policies:
+- **`node-role.kubernetes.io/worker=worker`** — identifies worker nodes (vs. controller)
+- **`hardware=pi-zero-2w`** — identifies Pi Zero 2 W hardware (for resource-aware scheduling)
+
+See [architecture.md](architecture.md#workload-placement) for how to use these labels in application workloads with `nodeSelector` and `tolerations`.
+
 ## Recovery — Token Swap (after controller reflash)
 
 If the Pi 4 controller is reflashed, its node token changes and all agents will fail to connect.

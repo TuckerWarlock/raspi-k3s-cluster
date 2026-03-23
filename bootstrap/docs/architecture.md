@@ -116,16 +116,56 @@ nodeSelector:
 
 ### Pi Zero Nodes (p1–p4) — application workloads
 
-Nodes are labeled and optionally tainted to control scheduling:
+Nodes are labeled and optionally tainted to control scheduling.
+
+**Setup labels** (run from controller after agents join):
 
 ```bash
 # Label all workers
 kubectl label node p1 p2 p3 p4 node-role.kubernetes.io/worker=worker
 kubectl label node p1 p2 p3 p4 hardware=pi-zero-2w
 
-# Optional: taint to require explicit toleration
+# Optional: taint to prevent system pods from scheduling
 kubectl taint node p1 p2 p3 p4 hardware=pi-zero-2w:NoSchedule
 ```
+
+**Use labels in application workloads** (optional but recommended):
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  template:
+    spec:
+      # Run only on worker nodes (not controller)
+      nodeSelector:
+        node-role.kubernetes.io/worker: "worker"
+      
+      # If tainted, add toleration
+      tolerations:
+      - key: hardware
+        operator: Equal
+        value: pi-zero-2w
+        effect: NoSchedule
+      
+      containers:
+      - name: app
+        image: my-app:latest
+```
+
+**Hostname-based selectors** (used by system components) — forces workloads to specific nodes:
+
+```yaml
+nodeSelector:
+  kubernetes.io/hostname: pi4controller  # Only on controller
+  # OR
+  kubernetes.io/hostname: p1             # Only on p1
+```
+
+Use role labels for application workloads (flexible scheduling across workers).
+Use hostname selectors for system components that must run on specific nodes.
 
 ---
 
