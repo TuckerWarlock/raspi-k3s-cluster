@@ -2,24 +2,22 @@
 
 ## Overview
 
-Deploy the **Prometheus + Grafana** monitoring stack on the K3s cluster.
+Deploy a **lightweight Prometheus + Grafana** monitoring stack on the K3s cluster.
 
-| Component | Deployment | Storage |
-|-----------|-----------|---------|
-| Prometheus | pi4controller | Longhorn PVC (10 GB, 15-day retention) |
-| Prometheus Operator | pi4controller | — |
-| Grafana | pi4controller | Longhorn PVC (2 GB) |
-| Node Exporter | DaemonSet on all nodes | — |
-| kube-state-metrics | pi4controller | — |
+This uses a **minimal StatefulSet approach** (no Prometheus Operator overhead) suitable for resource-constrained environments.
+
+| Component | Deployment | Storage | Memory |
+|-----------|-----------|---------|--------|
+| Prometheus | StatefulSet on pi4controller | Longhorn PVC (3 GB, 7-day retention) | 50m / 64Mi |
+| Grafana | Deployment on pi4controller | Longhorn PVC (1 GB) | 25m / 32Mi |
 
 ## Architecture
 
-- **Prometheus Operator** manages the Prometheus server via `Prometheus` CRD
-- **ServiceMonitor** objects (auto-generated) tell Prometheus what to scrape
-- **Node Exporter** DaemonSet collects OS-level metrics (CPU, memory, disk, network)
-- **kube-state-metrics** exposes Kubernetes object state (pods, deployments, etc.)
-- **Grafana** queries Prometheus and visualizes dashboards
-- Both Prometheus and Grafana are exposed via **Traefik Ingress** on `prometheus.cluster.local` and `grafana.cluster.local`
+- **Prometheus StatefulSet** — minimal, no operator, ConfigMap-based config
+- **Scrapes essential metrics:** nodes, pods, Kubernetes API
+- **Grafana Deployment** — pre-configured Prometheus datasource
+- **Both exposed via Traefik Ingress** on `prometheus.cluster.local` and `grafana.cluster.local`
+- **No node exporters or kube-state-metrics** — uses Kubernetes API directly for metrics
 
 ## Prerequisites
 
@@ -30,151 +28,139 @@ Deploy the **Prometheus + Grafana** monitoring stack on the K3s cluster.
 
 ## Installation
 
-### Step 1: Update Helm repositories
+### Step 1: Prerequisites
+
+- K3s cluster running (steps 01–03)
+- MetalLB configured (step 04)
+- Traefik ingress controller deployed (step 05)
+- **Longhorn storage** with working PVCs (step 06)
+
+All should be deployed via `helmfile sync` in the core bootstrap.
+
+### Step 2: Deploy monitoring
+
+Once the core stack is stable, deploy Prometheus and Grafana:
 
 ```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
+kubectl apply -f cluster/monitoring/
 ```
 
-### Step 2: Deploy via Helmfile
+This creates:
+- ConfigMap with Prometheus scrape config
+- Prometheus StatefulSet with Longhorn PVC
+- Grafana Deployment with Longhorn PVC
+- RBAC (ServiceAccount, ClusterRole, ClusterRoleBinding)
+- Traefik Ingress
 
-The `kube-prometheus-stack` release is now in `helmfile.yaml`. Deploy it:
+### Step 3: Verify deployment
 
 ```bash
-helmfile sync
+kubectl -n monitoring get pods -w
 ```
 
-This will:
-1. Create the `monitoring` namespace
-2. Deploy Prometheus Operator + Prometheus server (pinned to pi4controller)
-3. Deploy Grafana with Longhorn persistence (pinned to pi4controller)
-4. Deploy Node Exporter as a DaemonSet (all nodes)
-5. Deploy kube-state-metrics on pi4controller
-6. Apply the Ingress for Prometheus and Grafana
+Wait for all pods to be `Running`:
+- `prometheus-0` (1-2 min to pull image + initialize)
+- `grafana-xxxxx` (should be instant)
 
-### Step 3: Verify the deployment
-
-Check pod status:
-
-```bash
-kubectl -n monitoring get pods -o wide
-```
-
-Expected output:
-```
-NAME                                          READY   STATUS    RESTARTS   NODE
-kube-prometheus-stack-grafana-xxxxx           1/1     Running   0          pi4controller
-kube-prometheus-stack-prometheus-operator-xxx 1/1     Running   0          pi4controller
-prometheus-kube-prometheus-prometheus-0       2/2     Running   0          pi4controller
-node-exporter-xxxxx                           1/1     Running   0          p1
-node-exporter-yyyyy                           1/1     Running   0          p2
-node-exporter-zzzzz                           1/1     Running   0          p3
-node-exporter-wwwww                           1/1     Running   0          p4
-kube-state-metrics-xxxxx                      1/1     Running   0          pi4controller
-```
-
-Check PVC binding:
+Check storage:
 
 ```bash
 kubectl -n monitoring get pvc
 ```
 
-Both `prometheus-kube-prometheus-prometheus-0` and `kube-prometheus-stack-grafana` should be `Bound`.
+Both PVCs should be `Bound`.
 
-### Step 4: Access the dashboards
+### Step 4: Access dashboards
 
-From your laptop, edit `/etc/hosts`:
+From your laptop, add to `/etc/hosts`:
 
 ```
 192.168.1.10 prometheus.cluster.local grafana.cluster.local
 ```
 
-Or add DNS records if using a local DNS server.
-
 Then visit:
-- **Prometheus**: http://prometheus.cluster.local → `/graph` for PromQL queries
-- **Grafana**: http://grafana.cluster.local → Login with `admin` / `admin` (change password!)
+- **Prometheus**: http://prometheus.cluster.local
+  - Go to `/graph` to query metrics
+  - Check `/targets` to verify scraping is working
+  
+- **Grafana**: http://grafana.cluster.local
+  - Login: `admin` / `admin` (change password in production!)
+  - Prometheus datasource is pre-configured
+  - Go to **Dashboards** → **Browse** to import or create dashboards
 
 ### Step 5: Verify metrics collection
 
 In **Prometheus** (`/targets`), you should see:
-- `kubernetes-nodes` (Node Exporter on all nodes)
-- `kubernetes-pods` (Pod metrics)
-- `prometheus-operator` (Prometheus itself)
-
-In **Grafana**:
-- The Prometheus datasource is pre-configured
-- Go to **Dashboards** → **Browse** to see available dashboards
-- Popular ones: "Kubernetes Cluster Monitoring", "Node Exporter Full"
+- `kubernetes-nodes` — node metrics via API proxy
+- `kubernetes-pods` — pod metrics (if pods have `prometheus.io/scrape: "true"` annotations)
+- `prometheus` — Prometheus itself
 
 ## Troubleshooting
 
-### Prometheus not scraping metrics
+### Prometheus pod stuck in `Init:0/1` or `Pending`
 
-Check ServiceMonitor objects:
-
-```bash
-kubectl -n monitoring get servicemonitor
-```
-
-If none exist, Prometheus won't find targets. The Helm chart should auto-create them.
-
-### Node Exporter pods in CrashLoopBackOff
-
-Check logs:
+This usually means the PVC isn't binding. Check:
 
 ```bash
-kubectl -n monitoring logs -l app.kubernetes.io/name=prometheus-node-exporter
-```
-
-Common issue: Pi Zero nodes are under-resourced. Reduce CPU/memory requests if needed.
-
-### Grafana datasource shows "Health: Server Error"
-
-Check that Prometheus is running:
-
-```bash
-kubectl -n monitoring get pod -l app.kubernetes.io/name=prometheus
-```
-
-If stuck in `Init:0/1` or `Pending`, check PVC:
-
-```bash
-kubectl -n monitoring describe pvc prometheus-kube-prometheus-prometheus-0
+kubectl -n monitoring describe pvc prometheus-storage-prometheus-0
+kubectl -n monitoring describe pod prometheus-0
 ```
 
 If PVC is stuck `Pending`, Longhorn may not have capacity. Check:
 
 ```bash
-kubectl -n longhorn-system get storageclass
 kubectl -n longhorn-system get pvc
+kubectl top nodes  # Ensure controller has free disk
+```
+
+### Grafana datasource shows "Health: Server Error"
+
+Verify Prometheus is running and reachable:
+
+```bash
+kubectl -n monitoring get pod -l app=prometheus
+kubectl -n monitoring logs prometheus-0
+```
+
+Try port-forward to test connectivity:
+
+```bash
+kubectl port-forward -n monitoring svc/prometheus 9090:9090
+# Then: curl http://localhost:9090/-/healthy
 ```
 
 ### Can't reach http://prometheus.cluster.local
 
-Verify Ingress:
+Verify Ingress is set up:
 
 ```bash
 kubectl -n monitoring get ingress
 ```
 
-If `HOSTS` are empty or `STATUS` is `<pending>`, check Traefik:
+Ensure your `/etc/hosts` is updated correctly, or add DNS records for those hostnames.
+
+### Memory usage too high
+
+The lightweight setup uses **~100-150MB total**. If higher, check:
 
 ```bash
-kubectl -n traefik get svc traefik
+kubectl top pods -n monitoring
 ```
 
-Ensure the `EXTERNAL-IP` is within the MetalLB pool (192.168.1.241–254).
+If Prometheus is using >200MB, it may be scraping too many metrics. Reduce retention or scrape interval in the ConfigMap:
 
-## Next Steps
+```bash
+kubectl -n monitoring edit configmap prometheus-config
+```
 
-- **Step 09**: Deploy **Loki + Promtail** for centralized log aggregation
-- **Step 10**: Deploy a sample workload to validate the full GitOps pipeline
-- **Step 11**: Configure **Longhorn backup strategy** for disaster recovery
+Reduce `retention.time` from `7d` to `3d` or lower `scrape_interval` from `30s` to `60s`.
 
-## Notes
+## Resource Budget
 
-- **Grafana admin password**: Stored in `prometheus-values.yaml` under `grafana.adminPassword`. Change it in production!
-- **Prometheus retention**: Set to 15 days via `retention: 15d`. Adjust in `prometheus-values.yaml` if needed.
-- **Resource limits**: Pi 4 gets 500m CPU / 512 MB RAM for Prometheus; 200m CPU / 256 MB RAM for Grafana. Monitor metrics to ensure these are sufficient.
+| Component | CPU Request | Memory Request |
+|-----------|------------|----------------|
+| Prometheus | 50m | 64Mi |
+| Grafana | 25m | 32Mi |
+| **Total** | **75m** | **96Mi** |
+
+Total impact on cluster: **~0.3% CPU, 0.1% memory** (minimal overhead).

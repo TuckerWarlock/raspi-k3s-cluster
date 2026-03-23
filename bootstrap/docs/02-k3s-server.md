@@ -15,7 +15,7 @@ cgroup_memory=1 cgroup_enable=memory
 
 > **⚠️ cmdline.txt must remain a single line.** Do not press Enter or add any newlines.
 > A second line or trailing newline will prevent the Pi from booting.
-> Verify with `cat /boot/firmware/cmdline.txt` — the entire file should be one line.
+> Verify with `cat /boot/firmware/cmdline.txt | wc -l` — should output `1`.
 
 Reboot, then SSH back in before continuing:
 ```bash
@@ -25,27 +25,14 @@ sudo reboot
 ## Install
 
 ```bash
-curl -sfL https://get.k3s.io | sh -s - server \
-  --write-kubeconfig-mode 644 \
-  --disable traefik \
-  --disable servicelb
+cd ~/raspi-k3s-cluster
+sudo bash bootstrap/scripts/install-k3s-server.sh
 ```
 
-> `--write-kubeconfig-mode 644` makes kubeconfig readable without sudo.
-> `--disable traefik` — install Traefik via Helm for full control.
-> `--disable servicelb` — disables the built-in klipper load balancer. **Required** if using MetalLB — they conflict and klipper will prevent MetalLB from setting up iptables DNAT rules.
-
-If the service fails to start on the first run, start it manually after confirming cgroups are active:
-```bash
-sudo systemctl start k3s
-```
-
-## Fix kubeconfig permissions
-
-If you installed without `--write-kubeconfig-mode 644`, fix it manually:
-```bash
-sudo chmod 644 /etc/rancher/k3s/k3s.yaml
-```
+This script installs K3s with:
+- `--write-kubeconfig-mode 644` — kubeconfig readable without sudo
+- `--disable traefik` — install Traefik via Helm for full control
+- `--disable servicelb` — **Required** if using MetalLB (conflicts with klipper)
 
 ## Verify
 
@@ -53,6 +40,8 @@ sudo chmod 644 /etc/rancher/k3s/k3s.yaml
 sudo systemctl status k3s
 kubectl get nodes -o wide
 ```
+
+Expected: `pi4controller` in `Ready` state.
 
 ## Retrieve Node Token
 
@@ -74,4 +63,3 @@ scp warl0ck@pi4controller.local:/etc/rancher/k3s/k3s.yaml ~/.kube/config
 sed -i '' 's/127.0.0.1/192.168.1.10/g' ~/.kube/config  # macOS
 # sed -i 's/127.0.0.1/192.168.1.10/g' ~/.kube/config   # Linux
 ```
-
