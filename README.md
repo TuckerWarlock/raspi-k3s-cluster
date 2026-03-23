@@ -40,7 +40,6 @@ All image releases can be downloaded from source here: https://dist1.8086.net/cl
 ## Scripts
 
 See [bootstrap/scripts/README.md](bootstrap/scripts/README.md) for the script reference.
-
 ## Repo Structure
 
 ```
