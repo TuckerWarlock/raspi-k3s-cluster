@@ -42,12 +42,17 @@ prometheus:
 prometheusOperator:
   nodeSelector:
     kubernetes.io/hostname: pi4controller
+  # Reduce replicas for Pi 4
+  replicaCount: 1
+  # Disable webhook to save memory
+  manageCrds: false
+  warnOnAllNamespaces: false
 
-# Kube-state-metrics (small footprint on controller only)
+# Kube-state-metrics (disabled to save memory on Pi 4)
 kubeStateMetrics:
   nodeSelector:
     kubernetes.io/hostname: pi4controller
-  enabled: true
+  enabled: false
 
 # Prometheus Node Exporter: DaemonSet on all nodes (collect node metrics)
 prometheus-node-exporter:
@@ -78,11 +83,11 @@ grafana:
   # Light resources
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
+      cpu: 25m
+      memory: 32Mi
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 100m
+      memory: 128Mi
   
   # Pre-install datasource for Prometheus
   datasources:
