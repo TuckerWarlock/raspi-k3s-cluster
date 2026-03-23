@@ -24,11 +24,11 @@ prometheus:
     # Light resource limits for Pi 4
     resources:
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 50m
+        memory: 128Mi
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: 300m
+        memory: 256Mi
     
     # Service monitor to scrape metrics
     serviceMonitorSelector: {}
