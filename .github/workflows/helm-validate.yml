@@ -8,6 +8,8 @@ on:
       - "bootstrap/scripts/install-argocd.sh"
       - ".github/workflows/helm-validate.yml"
       - ".github/workflows/reusable-manifest-validation.yml"
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
