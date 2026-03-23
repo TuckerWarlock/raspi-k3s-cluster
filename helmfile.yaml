@@ -5,6 +5,8 @@ repositories:
     url: https://charts.longhorn.io
   - name: argo
     url: https://argoproj.github.io/argo-helm
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
 
 releases:
   - name: traefik
@@ -24,3 +26,9 @@ releases:
     chart: argo/argo-cd
     values:
       - cluster/argocd/values.yaml
+
+  - name: kube-prometheus-stack
+    namespace: monitoring
+    chart: prometheus-community/kube-prometheus-stack
+    values:
+      - cluster/monitoring/prometheus-values.yaml
