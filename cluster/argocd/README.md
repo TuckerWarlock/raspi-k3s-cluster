@@ -17,7 +17,14 @@ argocd/
 │   ├── traefik.yaml            # Traefik Application
 │   ├── longhorn.yaml           # Longhorn Application
 │   ├── prometheus.yaml         # Prometheus Application
-│   └── grafana.yaml            # Grafana Application
+│   ├── grafana.yaml            # Grafana Application
+│   └── docs/                   # Setup documentation for each addon
+│       ├── INDEX.md
+│       ├── metallb.md
+│       ├── traefik.md
+│       ├── longhorn.md
+│       ├── prometheus.md
+│       └── grafana.md
 └── workloads/                  # User applications (pi zero workers)
     ├── kustomization.yaml
     └── (add your apps here)
