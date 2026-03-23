@@ -170,13 +170,13 @@ raspi-k3s-cluster/
 │   │   ├── setup-controller.sh         # Pi 4 controller setup
 │   │   └── uninstall-k3s.sh            # K3s teardown
 │   └── docs/                            # Setup guides & architecture
-│       ├── 01-clusterhat-setup.md      # ClusterHAT hardware & OS
-│       ├── 01b-clusterctrl-reference.md # clusterctrl command reference
+│       ├── 01-clusterhat-setup.md      # ClusterHAT hardware & OS (includes clusterctrl ref)
 │       ├── 02-k3s-server.md            # K3s control plane setup
 │       ├── 03-k3s-agents.md            # K3s worker setup
-│       ├── 04-metallb.md               # Load balancer setup
-│       ├── 05-ingress.md               # Traefik ingress setup
-│       ├── 06-longhorn.md              # Longhorn storage setup
+│       ├── 04-metallb-load-balancer.md # MetalLB setup
+│       ├── 05-traefik-ingress.md       # Traefik ingress controller
+│       ├── 06-longhorn-storage.md      # Longhorn distributed storage
+│       ├── 08-prometheus-grafana-monitoring.md # Lightweight monitoring stack
 │       └── architecture.md             # Detailed architecture & decisions
 │
 ├── cluster/                             # Kubernetes manifests (managed by ArgoCD)
@@ -247,10 +247,10 @@ See [architecture.md](bootstrap/docs/architecture.md) for the full tech stack, n
 Follow these guides in order to set up your cluster:
 
 1. [ClusterHAT OS & CNAT setup](bootstrap/docs/01-clusterhat-setup.md)
-   - [clusterctrl command reference](bootstrap/docs/01b-clusterctrl-reference.md)
 2. [K3s server on Pi 4](bootstrap/docs/02-k3s-server.md)
 3. [K3s agents on Pi Zeros](bootstrap/docs/03-k3s-agents.md)
-4. [MetalLB load balancer](bootstrap/docs/04-metallb.md)
-5. [Ingress controller (Traefik)](bootstrap/docs/05-ingress.md)
-6. [Storage with Longhorn](bootstrap/docs/06-longhorn.md)
-7. ArgoCD (GitOps) — run: `bash bootstrap/scripts/install-argocd.sh`
+4. [MetalLB load balancer](bootstrap/docs/04-metallb-load-balancer.md)
+5. [Traefik ingress controller](bootstrap/docs/05-traefik-ingress.md)
+6. [Longhorn distributed storage](bootstrap/docs/06-longhorn-storage.md)
+7. [Prometheus + Grafana monitoring](bootstrap/docs/08-prometheus-grafana-monitoring.md)
+8. ArgoCD (GitOps) — run: `bash bootstrap/scripts/install-argocd.sh`
