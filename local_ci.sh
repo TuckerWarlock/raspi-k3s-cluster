@@ -171,6 +171,7 @@ install_kubeconform
 step "kubeconform: validating raw cluster manifests"
 find cluster -type f \( -name "*.yaml" -o -name "*.yml" \) \
   ! -name "values.yaml" \
+  ! -name "*-values.yaml" \
   -print > "$WORK_DIR/raw-manifest-files.txt"
 test -s "$WORK_DIR/raw-manifest-files.txt" || fail "No raw manifests found"
 
