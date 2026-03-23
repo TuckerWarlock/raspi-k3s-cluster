@@ -1,22 +1,18 @@
 # ArgoCD Helm Values
-# 
-# Install with:
-#   helm repo add argo https://argoproj.github.io/argo-helm
-#   helm install argocd argo/argo-cd \
-#     --namespace argocd --create-namespace \
-#     --values cluster/argocd/values.yaml
+# Applied by helmfile during the bootstrap phase (helmfile sync).
+# After ArgoCD is running it manages its own Applications from Git.
+#
+# To find available chart values:
+#   helm show values argo/argo-cd
 
 server:
   service:
     type: ClusterIP
-  
-persistence:
-  enabled: true
-  storageClassName: longhorn
-  size: 2Gi
 
+# Dex (OIDC/SSO) is unused in this cluster
 dex:
   enabled: false
 
-# Controller and other components use default replicas
-# Adjust if needed for your cluster size
+# Single-instance Redis is fine for this cluster size; state lives in CRDs
+redis:
+  enabled: true

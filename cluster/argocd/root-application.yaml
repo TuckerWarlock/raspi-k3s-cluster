@@ -1,42 +1,29 @@
+# App of Apps: applied once after `helmfile sync` bootstraps ArgoCD.
+# ArgoCD then manages everything in cluster/argocd/addons/ automatically.
+#
+# Apply with:
+#   kubectl apply -f cluster/argocd/root-application.yaml
+#
+# What this deploys (via addons/kustomization.yaml):
+#   - prometheus (cluster/monitoring/prometheus)
+#   - grafana    (cluster/monitoring/grafana)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: prometheus
+  name: cluster-addons
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
-    path: cluster/monitoring/prometheus
+    path: cluster/argocd/addons
     targetRevision: main
   destination:
     server: https://kubernetes.default.svc
-    namespace: monitoring
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-    - CreateNamespace=true
-
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: grafana
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
-    path: cluster/monitoring/grafana
-    targetRevision: main
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: monitoring
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-    - CreateNamespace=true
+      - CreateNamespace=true
