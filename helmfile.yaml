@@ -14,10 +14,8 @@ releases:
     chart: metallb/metallb
     version: 0.14.8
     createNamespace: true
-    values:
-      - speaker:
-          nodeSelector:
-            kubernetes.io/hostname: pi4controller
+    set:
+      speaker.nodeSelector.kubernetes\.io/hostname: pi4controller
 
   - name: traefik
     namespace: traefik
@@ -30,10 +28,9 @@ releases:
     chart: longhorn/longhorn
     version: 1.5.4
     createNamespace: true
-    values:
-      - persistence:
-          defaultClass: true
-          defaultClassReplicaCount: 1
+    set:
+      persistence.defaultClass: true
+      persistence.defaultClassReplicaCount: 1
 
   - name: argocd
     namespace: argocd
