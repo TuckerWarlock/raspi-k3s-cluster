@@ -9,9 +9,14 @@ spec:
   source:
     repoURL: https://charts.longhorn.io
     chart: longhorn
-    targetRevision: 1.6.0
+    targetRevision: 1.5.4
     helm:
-      valuesFile: cluster/core-system/longhorn/values.yaml
+      values: |
+        persistence:
+          defaultClass: true
+          defaultClassReplicaCount: 1
+        csi:
+          kubeletRootDir: /var/lib/kubelet
   
   destination:
     server: https://kubernetes.default.svc
