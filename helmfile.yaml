@@ -1,8 +1,40 @@
 repositories:
+  - name: metallb
+    url: https://metallb.github.io/metallb
+  - name: traefik
+    url: https://traefik.github.io/charts
+  - name: longhorn
+    url: https://charts.longhorn.io
   - name: argo
     url: https://argoproj.github.io/argo-helm
 
 releases:
+  - name: metallb
+    namespace: metallb-system
+    chart: metallb/metallb
+    version: 0.14.8
+    createNamespace: true
+    values:
+      - speaker:
+          nodeSelector:
+            kubernetes.io/hostname: pi4controller
+
+  - name: traefik
+    namespace: traefik
+    chart: traefik/traefik
+    version: 27.0.0
+    createNamespace: true
+
+  - name: longhorn
+    namespace: longhorn-system
+    chart: longhorn/longhorn
+    version: 1.5.4
+    createNamespace: true
+    values:
+      - persistence:
+          defaultClass: true
+          defaultClassReplicaCount: 1
+
   - name: argocd
     namespace: argocd
     chart: argo/argo-cd

@@ -1,26 +1,32 @@
-apiVersion: argoproj.io/v1alpha1
-kind: Application
+apiVersion: argoproj.io/v1beta1
+kind: ApplicationSet
 metadata:
-  name: cluster
+  name: monitoring
   namespace: argocd
 spec:
-  project: default
-  
-  # Source: This repo, cluster/argocd/ (Kustomization)
-  source:
-    repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
-    path: cluster/argocd
-    targetRevision: main
-  
-  # Destination: This cluster
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: argocd
-  
-  # Auto-sync: Keep cluster in sync with Git
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-    - CreateNamespace=true
+  generators:
+  - list:
+      elements:
+      - name: prometheus
+        path: cluster/argocd/addons/prometheus.yaml
+      - name: grafana
+        path: cluster/argocd/addons/grafana.yaml
+  template:
+    metadata:
+      name: '{{name}}'
+      namespace: argocd
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
+        path: cluster/monitoring/{{name}}
+        targetRevision: main
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: monitoring
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+        - CreateNamespace=true
