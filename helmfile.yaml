@@ -1,4 +1,6 @@
 repositories:
+  - name: metallb
+    url: https://metallb.github.io/metallb
   - name: traefik
     url: https://traefik.github.io/charts
   - name: longhorn
@@ -7,6 +9,12 @@ repositories:
     url: https://argoproj.github.io/argo-helm
 
 releases:
+  - name: metallb
+    namespace: metallb-system
+    chart: metallb/metallb
+    values:
+      - cluster/core-system/metallb/values.yaml
+
   - name: traefik
     namespace: traefik
     chart: traefik/traefik
