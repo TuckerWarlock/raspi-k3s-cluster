@@ -5,3 +5,18 @@ nodeSelector:
 defaultSettings:
   # Single replica is appropriate for this small cluster
   defaultReplicaCount: 1
+
+# Disable UI to save memory (~4Mi per pod × 2 = ~8Mi)
+ui:
+  enabled: false
+
+# Reduce CSI component replicas from 3 to 2 for Pi 4 resource constraints
+csi:
+  attacher:
+    replicas: 2
+  provisioner:
+    replicas: 2
+  resizer:
+    replicas: 2
+  snapshotter:
+    replicas: 2
