@@ -37,10 +37,16 @@ Raspberry Pi can be purchased at these authorized resellers
 
 All image releases can be downloaded from source here: https://dist1.8086.net/clusterctrl/bookworm/
 
-## Scripts
+## Directory Purposes
 
-See [bootstrap/scripts/README.md](bootstrap/scripts/README.md) for the script reference.
-## Repo Structure
+| Directory | Purpose | Managed By |
+|-----------|---------|-----------|
+| **bootstrap/** | One-time setup scripts & docs | Manual (don't run after setup) |
+| **cluster/** | Infrastructure-as-code for cluster | ArgoCD (auto-synced from Git) |
+| **workloads/** | User applications & services | ArgoCD (auto-synced from Git) |
+| **config/** | Kubeconfig, templates, examples | Manual |
+
+### Repo Structure
 
 ```
 raspi-k3s-cluster/
@@ -97,16 +103,7 @@ raspi-k3s-cluster/
 ├── local_ci.sh                         # Local manifest validation
 ├── README.md                           # This file
 └── .gitignore
-
-### Directory Purposes
-
-| Directory | Purpose | Managed By |
-|-----------|---------|-----------|
-| **bootstrap/** | One-time setup scripts & docs | Manual (don't run after setup) |
-| **cluster/** | Infrastructure-as-code for cluster | ArgoCD (auto-synced from Git) |
-| **workloads/** | User applications & services | ArgoCD (auto-synced from Git) |
-| **config/** | Kubeconfig, templates, examples | Manual |
-
+```
 
 ## Tools Used
 
@@ -117,8 +114,9 @@ raspi-k3s-cluster/
 ### Cluster Components
 - [MetalLB](https://metallb.universe.tf/) — bare-metal load balancer
 - [Traefik](https://traefik.io/) — ingress controller (installed via Helm)
-- [Longhorn](https://longhorn.io/) — distributed block storage
+- [Longhorn](https://longhorn.io/) — distributed block storage for persistent volumes
 - [ArgoCD](https://argoproj.github.io/cd/) — GitOps continuous deployment
+- [Prometheus + Grafana]() - monitoring nodes and pod deployments
 
 ### CI / Validation
 - [Helmfile](https://helmfile.readthedocs.io/) — declarative Helm release manager; drives chart rendering in CI
@@ -131,15 +129,6 @@ raspi-k3s-cluster/
 
 See [architecture.md](bootstrap/docs/architecture.md) for the full tech stack, network layout, workload placement strategy, and decisions log.
 
-## Setup Order
+## Setup
 
-Follow these guides in order to set up your cluster:
-
-1. [ClusterHAT OS & CNAT setup](bootstrap/docs/01-clusterhat-setup.md)
-2. [K3s server on Pi 4](bootstrap/docs/02-k3s-server.md)
-3. [K3s agents on Pi Zeros](bootstrap/docs/03-k3s-agents.md)
-4. [MetalLB load balancer](bootstrap/docs/04-metallb-load-balancer.md)
-5. [Traefik ingress controller](bootstrap/docs/05-traefik-ingress.md)
-6. [Longhorn distributed storage](bootstrap/docs/06-longhorn-storage.md)
-7. [Prometheus + Grafana monitoring](bootstrap/docs/08-prometheus-grafana-monitoring.md)
-8. ArgoCD (GitOps) — run: `bash bootstrap/scripts/install-argocd.sh`
+Follow the steps in the [docs directory](bootstrap/docs/). Everything is numbered and labeled.
