@@ -2,7 +2,7 @@
 
 Lightweight Prometheus + Grafana monitoring stack.
 
-See [bootstrap/docs/08-prometheus-grafana-monitoring.md](../../bootstrap/docs/08-prometheus-grafana-monitoring.md) for complete setup instructions.
+See [cluster/docs/addons/prometheus.md](../docs/addons/prometheus.md) and [cluster/docs/addons/grafana.md](../docs/addons/grafana.md) for complete setup instructions.
 
 ## Structure
 
