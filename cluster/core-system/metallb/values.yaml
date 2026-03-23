@@ -1,0 +1,6 @@
+# MetalLB speaker on pi4controller only (has eth0 for L2 advertisement)
+# Pi Zero workers (p1-p4) don't have LAN interfaces, so speakers there waste memory
+
+speaker:
+  nodeSelector:
+    kubernetes.io/hostname: pi4controller
