@@ -15,7 +15,7 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 10Gi
+              storage: 5Gi
     
     # Retention: 15 days
     retention: 15d
