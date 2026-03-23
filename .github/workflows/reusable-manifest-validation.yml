@@ -54,6 +54,7 @@ jobs:
         run: |
           find cluster -type f \( -name "*.yaml" -o -name "*.yml" \) \
             ! -name "values.yaml" \
+            ! -name "*-values.yaml" \
             -print > /tmp/raw-manifest-files.txt
           test -s /tmp/raw-manifest-files.txt
 
