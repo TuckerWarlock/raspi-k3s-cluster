@@ -39,119 +39,7 @@ All image releases can be downloaded from source here: https://dist1.8086.net/cl
 
 ## Scripts
 
-| Script | Purpose | Location |
-|--------|---------|----------|
-| `bootstrap/scripts/set-static-ip.sh` | Set static IPv4 on the Pi 4 via NetworkManager (pass IP as argument) |
-| `bootstrap/scripts/setup-controller.sh` | Install CLI tools and configure Pi 4 controller |
-| `bootstrap/scripts/setup-agents.sh` | Install CLI tools on Pi Zero workers |
-| `bootstrap/scripts/install-k3s-server.sh` | Install K3s control plane on Pi 4 |
-| `bootstrap/scripts/install-k3s-agent.sh` | Install K3s agent on Pi Zero workers |
-| `bootstrap/scripts/install-helm.sh` | Install Helm and Helmfile on Pi 4 |
-| `bootstrap/scripts/install-longhorn.sh` | Install Longhorn (distributed storage) |
-| `bootstrap/scripts/install-argocd.sh` | Install ArgoCD (GitOps) |
-| `bootstrap/scripts/cleanup-longhorn.sh` | Clean up and fully remove Longhorn |
-| `bootstrap/scripts/uninstall-k3s.sh` | Tear down K3s (server or agent) |
-
-## Setup Server - Pi 4 Controller
-
-```bash
-# 1. Edit cmdline.txt to enable cgroup memory (required for K3s)
-sudo nano /boot/firmware/cmdline.txt
-# Append to the END of the existing single line — do not add a newline:
-cgroup_memory=1 cgroup_enable=memory
-
-sudo reboot
-# SSH back in after reboot, then continue:
-
-# 2. (Optional) Set static IP — pass your desired IP as an argument
-curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/set-static-ip.sh -o set-static-ip.sh
-sudo bash set-static-ip.sh 192.168.1.10
-
-# 3. Install CLI tools + .bash_profile (lsd, oh-my-posh, FiraCode)
-curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/setup-controller.sh | bash
-
-# 4. Install K3s
-curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/install-k3s-server.sh | sudo bash
-
-# 5. Install Helm
-curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/install-helm.sh | bash
-```
-
-> After running `install-k3s-server.sh` on the controller, get the node token with:
-```
-sudo cat /var/lib/rancher/k3s/server/node-token
-```
-
-
-## Setup Agents - Pi Zero Workers (p1–p4)
-
-```bash
-# 1. Edit cmdline.txt to enable cgroup memory (required for K3s)
-sudo nano /boot/firmware/cmdline.txt
-# Append to the END of the existing single line — do not add a newline:
-cgroup_memory=1 cgroup_enable=memory
-
-sudo reboot
-# SSH back in after reboot, then continue:
-
-# 2. Install CLI tools + .bash_profile (lsd, oh-my-posh tokyo theme, FiraCode)
-curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/setup-agents.sh | bash
-
-# 3. Install K3s agent (pass in token and node IP)
-curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/install-k3s-agent.sh -o install-k3s-agent.sh
-K3S_TOKEN=abc123::server:def456 NODE_IP=172.19.181.x bash install-k3s-agent.sh
-```
-
-## Network Layout
-
-The ClusterHAT uses CNAT to route the p1–p4 subnet through the Pi 4 controller.
-
-```
-LAN
- └── Raspberry Pi 4 controller (eth0: 192.168.1.x, usb0: 172.19.181.254)
-      ├── p1 (Pi Zero 2 W)  172.19.181.1
-      ├── p2 (Pi Zero 2 W)  172.19.181.2
-      ├── p3 (Pi Zero 2 W)  172.19.181.3
-      └── p4 (Pi Zero 2 W)  172.19.181.4
-```
-
-> Adjust IPs to match your actual CNAT subnet.
-
-## Monitoring — k9s from Your Laptop
-
-k9s gives you a full terminal UI for the cluster without SSH-ing into the Pi.
-
-**1. Copy the kubeconfig to your laptop** (run this on your laptop):
-```bash
-mkdir -p ~/.kube
-scp warl0ck@pi4controller.local:/etc/rancher/k3s/k3s.yaml ~/.kube/config
-```
-
-**2. Update the server address** (the default `127.0.0.1` only works on the Pi itself):
-```bash
-# macOS
-sed -i '' 's/127.0.0.1/192.168.1.10/g' ~/.kube/config
-
-# Linux
-sed -i 's/127.0.0.1/192.168.1.10/g' ~/.kube/config
-```
-Replace `192.168.1.10` with your Pi 4 controller's actual static IP if different.
-
-**3. Install k9s:**
-```bash
-# macOS
-brew install k9s
-
-# Linux
-curl -sS https://webinstall.dev/k9s | bash
-```
-
-**4. Launch:**
-```bash
-k9s
-```
-
-> If the kubeconfig on the Pi is ever regenerated (e.g. after a K3s reinstall), re-run the `scp` command to pull the updated file.
+See [bootstrap/scripts/README.md](bootstrap/scripts/README.md) for the script reference.
 
 ## Repo Structure
 
@@ -159,55 +47,57 @@ k9s
 raspi-k3s-cluster/
 ├── bootstrap/                           # One-time setup (manual, hands-off after)
 │   ├── scripts/                         # Installation scripts
-│   │   ├── install-argocd.sh           # ArgoCD (GitOps) setup
-│   │   ├── install-helm.sh             # Helm installation
+│   │   ├── README.md                   # Script reference
+│   │   ├── install-helm.sh             # Helm & Helmfile installation
 │   │   ├── install-k3s-agent.sh        # K3s agent on workers
 │   │   ├── install-k3s-server.sh       # K3s control plane
-│   │   ├── install-longhorn.sh         # Longhorn storage
-│   │   ├── cleanup-longhorn.sh         # Longhorn cleanup utility
 │   │   ├── set-static-ip.sh            # Static IP setup
 │   │   ├── setup-agents.sh             # Pi Zero agent setup
 │   │   ├── setup-controller.sh         # Pi 4 controller setup
+│   │   ├── cleanup-longhorn.sh         # Longhorn cleanup utility
 │   │   └── uninstall-k3s.sh            # K3s teardown
 │   └── docs/                            # Setup guides & architecture
-│       ├── 01-clusterhat-setup.md      # ClusterHAT hardware & OS (includes clusterctrl ref)
+│       ├── 01-clusterhat-setup.md      # ClusterHAT hardware & OS
 │       ├── 02-k3s-server.md            # K3s control plane setup
 │       ├── 03-k3s-agents.md            # K3s worker setup
-│       ├── 04-metallb-load-balancer.md # MetalLB setup
+│       ├── 04-metallb-load-balancer.md # MetalLB load balancer
 │       ├── 05-traefik-ingress.md       # Traefik ingress controller
 │       ├── 06-longhorn-storage.md      # Longhorn distributed storage
-│       ├── 08-prometheus-grafana-monitoring.md # Lightweight monitoring stack
-│       └── architecture.md             # Detailed architecture & decisions
+│       ├── 08-prometheus-grafana-monitoring.md # Monitoring stack
+│       └── architecture.md             # Architecture & decisions
 │
 ├── cluster/                             # Kubernetes manifests (managed by ArgoCD)
-│   ├── argocd/                         # ArgoCD configuration
-│   │   ├── namespace.yaml              # argocd namespace
-│   │   ├── application-cluster.yaml    # Cluster self-management Application
-│   │   ├── ingress.yaml                # ArgoCD UI Ingress (Traefik)
-│   │   └── values.yaml                 # Helm values reference
-│   └── core-system/                    # Core cluster components
-│       ├── metallb/                    # Load balancer
-│       │   ├── ipaddresspool.yaml      # IP pool configuration
-│       │   └── l2advertisement.yaml    # L2 advertisement
-│       ├── traefik/                    # Ingress controller
-│       │   ├── values.yaml             # Helm values
-│       │   └── traefik-test-ingress.yaml
-│       └── longhorn/                   # Distributed block storage
-│           └── test-pvc.yaml           # Test PVC (for verification)
+│   ├── core-system/                    # Core infrastructure (via helmfile)
+│   │   ├── metallb/                    # Load balancer
+│   │   │   ├── ipaddresspool.yaml      # IP pool
+│   │   │   ├── l2advertisement.yaml    # L2 advertisement
+│   │   │   └── values.yaml             # Helm values
+│   │   ├── traefik/                    # Ingress controller
+│   │   │   ├── values.yaml             # Helm values
+│   │   │   └── traefik-test-ingress.yaml # Test ingress
+│   │   └── longhorn/                   # Distributed storage
+│   │       ├── values.yaml             # Helm values
+│   │       └── test-pvc.yaml           # Test PVC
+│   ├── monitoring/                     # Monitoring (via kubectl apply)
+│   │   ├── namespace.yaml
+│   │   ├── prometheus-config.yaml
+│   │   ├── prometheus-rbac.yaml
+│   │   ├── prometheus-statefulset.yaml
+│   │   ├── grafana.yaml
+│   │   └── ingress.yaml
+│   └── argocd/                         # GitOps management (via helmfile)
+│       ├── namespace.yaml
+│       ├── application-cluster.yaml
+│       ├── ingress.yaml
+│       └── values.yaml
 │
 ├── workloads/                          # User applications (managed by ArgoCD)
 │   └── (future applications)
 │
-├── config/                             # Configuration & examples
-│   └── (kubeconfig, templates, etc.)
-│
-├── .github/
-│   ├── copilot-instructions.md         # Copilot CLI context
-│   └── workflows/                      # CI/CD pipelines
-│
+├── helmfile.yaml                       # Helm release definitions
+├── local_ci.sh                         # Local manifest validation
 ├── README.md                           # This file
 └── .gitignore
-```
 
 ### Directory Purposes
 
