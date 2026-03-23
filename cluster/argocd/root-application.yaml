@@ -11,8 +11,6 @@ spec:
     repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
     path: cluster/argocd
     targetRevision: main
-    plugin:
-      name: kustomize
   
   # Destination: This cluster
   destination:
