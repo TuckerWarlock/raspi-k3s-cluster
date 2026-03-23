@@ -1,41 +1,60 @@
-# 04 — MetalLB (Bare-Metal Load Balancer)
+# Step 04: MetalLB (Bare-Metal Load Balancer)
 
-MetalLB gives your cluster real `LoadBalancer` type services on bare metal using Layer 2 ARP.
+## Overview
 
-## Install via Helm
+MetalLB gives your cluster real `LoadBalancer` type services on bare metal using Layer 2 ARP (address resolution protocol).
+
+| Component | Scope | Storage | Memory |
+|-----------|-------|---------|--------|
+| MetalLB speakers | DaemonSet pinned to pi4controller | N/A | ~70MB total |
+| IPAddressPool | Cluster config | N/A | N/A |
+
+## Prerequisites
+
+- K3s cluster running (steps 01–03)
 
 > **⚠️ K3s ships with a built-in load balancer called klipper (ServiceLB).** It conflicts with
 > MetalLB and will prevent it from setting up iptables DNAT rules for LoadBalancer IPs.
 > The `install-k3s-server.sh` script already passes `--disable servicelb` to handle this.
-> If you installed K3s manually without that flag, MetalLB will silently fail to work.
+
+## Installation
+
+MetalLB is deployed as part of the core infrastructure via helmfile:
 
 ```bash
-helm repo add metallb https://metallb.github.io/metallb
-helm repo update
-helm install metallb metallb/metallb \
-  --namespace metallb-system \
-  --create-namespace \
-  --wait
+helmfile sync
 ```
 
-## Configure IP Address Pool
+This installs:
+- MetalLB controller and speaker DaemonSet (pinned to pi4controller only—Pi Zeros have no LAN interface for L2 advertisement)
+- Helm values from `cluster/core-system/metallb/values.yaml`
+- IP address pool and L2 advertisement configured via `cluster/core-system/metallb/ipaddresspool.yaml` and `l2advertisement.yaml`
 
-Edit `manifests/metallb/ipaddresspool.yaml` with a range from your LAN subnet
-that is **outside your router's DHCP range**:
-
-```bash
-kubectl apply -f manifests/metallb/ipaddresspool.yaml
-kubectl apply -f manifests/metallb/l2advertisement.yaml
-```
+The IP pool is pre-configured to use `192.168.1.241–192.168.1.254` (outside the router's DHCP range).
 
 ## Verify
 
 ```bash
-kubectl get pods -n metallb-system
+kubectl -n metallb-system get pods
+# Should show: controller-xxxxx (1 replica), speaker-xxxxx (1 replica on pi4controller)
+
+kubectl -n metallb-system get ipaddresspool
+kubectl -n metallb-system get l2advertisement
 ```
 
-Deploy a test service with `type: LoadBalancer` and confirm it gets an EXTERNAL-IP from your pool:
+## Testing
+
+Deploy a test LoadBalancer service:
 
 ```bash
-kubectl get svc
+kubectl create service loadbalancer test-lb --tcp=8080:8080 --dry-run=client -o yaml | \
+  kubectl set env -f - SOME_VAR=test -o yaml | kubectl apply -f -
 ```
+
+Or check existing services:
+
+```bash
+kubectl get svc -A | grep LoadBalancer
+```
+
+Any service with `type: LoadBalancer` should get an EXTERNAL-IP from the pool (192.168.1.241–254).
