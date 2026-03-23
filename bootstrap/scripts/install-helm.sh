@@ -20,8 +20,10 @@ helm version
 
 echo ""
 echo "==> Installing Helmfile..."
-sudo apt-get update
-sudo apt-get install -y helmfile
+HELMFILE_VERSION="v0.144.0"
+HELMFILE_URL="https://github.com/roboll/helmfile/releases/download/${HELMFILE_VERSION}/helmfile_linux_arm64"
+sudo curl -fL "${HELMFILE_URL}" -o /usr/local/bin/helmfile
+sudo chmod +x /usr/local/bin/helmfile
 
 echo ""
 echo "==> Helmfile version:"
