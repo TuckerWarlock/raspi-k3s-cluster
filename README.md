@@ -46,7 +46,7 @@ All image releases can be downloaded from source here: https://dist1.8086.net/cl
 | `bootstrap/scripts/setup-agents.sh` | Install CLI tools on Pi Zero workers |
 | `bootstrap/scripts/install-k3s-server.sh` | Install K3s control plane on Pi 4 |
 | `bootstrap/scripts/install-k3s-agent.sh` | Install K3s agent on Pi Zero workers |
-| `bootstrap/scripts/install-helm.sh` | Install Helm on Pi 4 |
+| `bootstrap/scripts/install-helm.sh` | Install Helm and Helmfile on Pi 4 |
 | `bootstrap/scripts/install-longhorn.sh` | Install Longhorn (distributed storage) |
 | `bootstrap/scripts/install-argocd.sh` | Install ArgoCD (GitOps) |
 | `bootstrap/scripts/cleanup-longhorn.sh` | Clean up and fully remove Longhorn |
