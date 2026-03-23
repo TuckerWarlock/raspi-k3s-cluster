@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup helmfile
-        uses: helmfile/helmfile-action@v2
+        uses: helmfile/helmfile-action@v2.4.0
         with:
           helmfile-version: v1.4.2
           helmfile-args: version
