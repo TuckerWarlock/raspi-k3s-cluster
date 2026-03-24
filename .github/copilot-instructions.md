@@ -12,9 +12,9 @@ This repository provisions and documents a K3s Kubernetes cluster on a Raspberry
 - 05 — Traefik ingress controller
 - 06 — Longhorn (distributed block storage)
 - 07 — ArgoCD (GitOps management)
+- 08 — Prometheus + Grafana (monitoring)
 
 🔄 **In Progress:**
-- 08 — Prometheus + Grafana (monitoring)
 - 09 — Loki + Promtail (logging)
 - 10 — Sample workload (GitOps validation)
 - 11 — Longhorn backup strategy
