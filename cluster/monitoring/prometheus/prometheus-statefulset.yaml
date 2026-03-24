@@ -17,7 +17,11 @@ spec:
       serviceAccountName: prometheus
       nodeSelector:
         kubernetes.io/hostname: pi4controller
-      
+      # Prometheus runs as nobody (uid 65534) — fsGroup ensures the Longhorn volume is chowned on mount
+      securityContext:
+        fsGroup: 65534
+        runAsUser: 65534
+        runAsNonRoot: true
       containers:
       - name: prometheus
         image: prom/prometheus:latest
