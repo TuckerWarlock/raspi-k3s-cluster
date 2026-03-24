@@ -91,7 +91,7 @@ Every change to this repo must have supporting documentation. The rule is simple
 | Change type | Required documentation |
 |---|---|
 | New or updated Kubernetes manifest | Update `README.md` repo structure if a new directory is added; add/update the relevant setup guide in `bootstrap/docs/` if the change affects a setup step |
-| New or updated Helm values | Comment the values file explaining non-obvious settings; update the corresponding `bootstrap/docs/` guide |
+| New or updated Helm values | **First**, fetch the chart's upstream `values.yaml` from the source repository (GitHub or Artifact Hub) and verify the exact key names before writing anything — silently-ignored keys are a common failure mode. Then comment the values file explaining non-obvious settings; update the corresponding `bootstrap/docs/` guide |
 | New or updated GitHub Actions workflow | Add a comment block at the top of the workflow file describing what it does and when it runs; update `README.md` if it affects the CI story |
 | New or updated bootstrap script | Update the script's internal usage header (`cat << 'EOF' ... EOF`); update the corresponding `bootstrap/docs/` step guide; update the scripts table in `README.md` |
 | New `local_ci.sh` behaviour | Keep the script's top-of-file comment block accurate |
@@ -100,7 +100,18 @@ Every change to this repo must have supporting documentation. The rule is simple
 
 When Copilot makes any of the above changes, it must also apply the corresponding documentation update in the same response — do not leave documentation as a follow-up suggestion.
 
-## Script Conventions
+## Helm Values Workflow
+
+Before creating or editing any `values.yaml` file, **always verify key names against the upstream chart**. Helm silently ignores unknown keys — wrong key names are invisible failures that leave the cluster at chart defaults.
+
+1. Locate the chart source (check the existing `helm repo add` command in the relevant install script or doc to find the repo URL).
+2. Fetch the upstream `values.yaml` directly from GitHub (e.g. `https://raw.githubusercontent.com/<org>/<repo>/refs/heads/main/charts/<chart>/values.yaml`) or via `helm show values <repo>/<chart> --version <version>`.
+3. Confirm the exact key path for every setting you intend to set.
+4. Only then write or update the `values.yaml` in this repo.
+
+When running `helm upgrade`, **always pin `--version <current-version>`** unless you are intentionally upgrading the chart. Omitting it pulls the latest chart and can cause a version jump that breaks the release.
+
+
 
 All scripts use `#!/usr/bin/env bash` and `set -euo pipefail`. Output uses `==> ` section prefixes. Heredocs use `<< 'EOF'` (no variable expansion inside).
 
