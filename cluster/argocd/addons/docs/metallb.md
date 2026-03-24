@@ -25,10 +25,16 @@ MetalLB is deployed as part of the core infrastructure via helmfile:
 helmfile sync
 ```
 
-This installs:
-- MetalLB controller and speaker DaemonSet (pinned to pi4controller only—Pi Zeros have no LAN interface for L2 advertisement)
-- Helm values from `cluster/core-system/metallb/values.yaml`
-- IP address pool and L2 advertisement configured via `cluster/core-system/metallb/ipaddresspool.yaml` and `l2advertisement.yaml`
+This installs the MetalLB controller and speaker DaemonSet (pinned to pi4controller only —
+Pi Zeros have no LAN interface for L2 advertisement).
+
+After `helmfile sync`, the `IPAddressPool` and `L2Advertisement` CRDs must be applied
+separately — they are raw manifests, not part of the Helm chart:
+
+```bash
+kubectl apply -f cluster/core-system/metallb/ipaddresspool.yaml
+kubectl apply -f cluster/core-system/metallb/l2advertisement.yaml
+```
 
 The IP pool is pre-configured to use `192.168.1.241–192.168.1.254` (outside the router's DHCP range).
 
