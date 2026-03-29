@@ -3,11 +3,17 @@
 # After ArgoCD is running it manages its own Applications from Git.
 #
 # To find available chart values:
-#   helm show values argo/argo-cd
+#   helm show values argo/argo-cd --version 7.8.1
 
 server:
   service:
     type: ClusterIP
+
+# Run argocd-server in HTTP mode so Traefik can proxy it without a redirect loop.
+# Traefik handles TLS termination at the ingress layer.
+configs:
+  params:
+    server.insecure: true
 
 # Dex (OIDC/SSO) is unused in this cluster
 dex:
