@@ -1,0 +1,4 @@
+namespace: monitoring
+resources:
+  - loki-configmap.yaml
+  - loki-statefulset.yaml
