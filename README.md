@@ -25,6 +25,8 @@ Complete setup guides are in [bootstrap/docs/](bootstrap/docs/):
 7. [Prometheus + Grafana monitoring](bootstrap/docs/08-prometheus-grafana-monitoring.md)
 8. ArgoCD GitOps — deployed via `helmfile sync`
 
+> **Rebuilding after a reflash?** → [`bootstrap/docs/post-reflash.md`](bootstrap/docs/post-reflash.md)
+
 ## Scripts
 
 See [bootstrap/scripts/README.md](bootstrap/scripts/README.md) for the script reference.

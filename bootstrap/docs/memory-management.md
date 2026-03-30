@@ -165,38 +165,14 @@ These appear in Grafana under Alerting, or can be queried in Prometheus at
 
 ## After a Reflash
 
-When the SD card is reflashed, the swap file and sysctl settings are lost.
-They are restored by running:
+See **[`bootstrap/docs/post-reflash.md`](post-reflash.md)** for the complete, ordered
+runbook. Key memory-related steps to not forget:
 
-```bash
-# On the fresh Pi 4 (after first boot):
-bash bootstrap/scripts/setup-controller.sh      # creates swap + sysctl
-
-# Then reinstall K3s (eviction flags are baked in):
-sudo bash bootstrap/scripts/install-k3s-server.sh
-```
-
-See `bootstrap/docs/02-k3s-server.md` for the full reinstall procedure.
-
-### Apply MetalLB pool after reinstall
-
-MetalLB's `IPAddressPool` and `L2Advertisement` are raw manifests — they are **not**
-Helm-managed and are not applied automatically by ArgoCD on a fresh install. Without
-them, all `LoadBalancer` services stay in `<pending>` and Traefik (and everything
-behind it) is unreachable.
-
-Run this from your laptop once MetalLB is running:
-
-```bash
-kubectl apply -f cluster/core-system/metallb/ipaddresspool.yaml
-kubectl apply -f cluster/core-system/metallb/l2advertisement.yaml
-
-# Verify Traefik gets an IP (should be 192.168.1.241 within ~5s):
-kubectl get svc -n traefik
-```
-
-Symptom if you forget: ArgoCD, Prometheus, and any other ingress-backed service all
-time out in the browser, even though all pods show `Running`.
+- Re-run `setup-controller.sh` — swap and sysctl are lost on every reflash
+- Re-run `install-k3s-server.sh` — eviction flags are baked into this script
+- Apply MetalLB manifests manually after `helmfile sync` — they are not Helm-managed and
+  are not applied by ArgoCD; without them every `LoadBalancer` stays `<pending>` and all
+  browser access times out despite pods being `Running`
 
 ---
 
