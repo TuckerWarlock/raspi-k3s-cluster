@@ -2,8 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Monitoring applications (managed by ArgoCD)
+# grafana.yaml temporarily removed — too memory-heavy; re-add when headroom exists
 resources:
   - prometheus.yaml
-  - grafana.yaml
   - loki.yaml
   - promtail.yaml
