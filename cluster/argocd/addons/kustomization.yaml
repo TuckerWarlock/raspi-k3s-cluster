@@ -3,11 +3,12 @@ kind: Kustomization
 
 resources:
   # Core infrastructure — managed by ArgoCD via Helm (multi-source Applications)
-  # These replace the helmfile-managed releases for metallb, traefik, and longhorn.
   - metallb.yaml
   - metallb-config.yaml
   - traefik.yaml
   - longhorn.yaml
+  # ArgoCD own config (ingress, etc.) — managed by ArgoCD
+  - argocd-config.yaml
   # Monitoring (grafana.yaml temporarily removed — too memory-heavy)
   - prometheus.yaml
   - loki.yaml

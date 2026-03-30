@@ -187,12 +187,11 @@ kubectl -n argocd get pods -w
 # Wait until application-controller, repo-server, redis, and server are all 1/1 Running
 ```
 
-### 3.3 — Apply the ArgoCD ingress and root Application
+### 3.3 — Apply the root Application
 
-The ingress exposes `argocd.cluster.local` via Traefik (which ArgoCD is about to deploy):
+One command bootstraps everything — ArgoCD will deploy the entire stack from Git:
 
 ```bash
-kubectl apply -f cluster/argocd/argocd-ingress.yaml
 kubectl apply -f cluster/argocd/root-application.yaml
 ```
 
@@ -204,13 +203,15 @@ defined there. ArgoCD will now install (in roughly this order, automatically):
 | `metallb` | MetalLB controller + speaker | `metallb-system` |
 | `metallb-config` | IPAddressPool + L2Advertisement | `metallb-system` |
 | `traefik` | Traefik ingress controller | `traefik` |
+| `argocd-config` | ArgoCD ingress (`argocd.cluster.local`) | `argocd` |
 | `longhorn` | Longhorn storage + CSI | `longhorn-system` |
 | `prometheus` | Prometheus + node-exporter | `monitoring` |
 | `loki` | Loki log aggregation | `monitoring` |
 | `promtail` | Promtail log shipping | `monitoring` |
 
 > **`metallb-config` will retry automatically** — it applies the IP pool only after MetalLB
-> CRDs are ready. No manual intervention needed.
+> CRDs are ready. `argocd-config` (the ingress) becomes active once Traefik is up.
+> No manual intervention needed.
 
 Watch all applications reach `Synced` + `Healthy`:
 
