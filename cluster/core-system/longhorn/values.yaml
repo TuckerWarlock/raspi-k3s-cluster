@@ -6,12 +6,12 @@ defaultSettings:
   # Single replica is appropriate for this small cluster
   defaultReplicaCount: 1
 
-# Reduce CSI sidecars from default 3 to 2 — saves ~4 pods on the controller
+# Reduce CSI sidecars from 2 to 1 — single replica is sufficient for a single-node storage backend
 csi:
-  attacherReplicaCount: 2
-  provisionerReplicaCount: 2
-  resizerReplicaCount: 2
-  snapshotterReplicaCount: 2
+  attacherReplicaCount: 1
+  provisionerReplicaCount: 1
+  resizerReplicaCount: 1
+  snapshotterReplicaCount: 1
 
 # Single UI replica is sufficient; default is 2
 longhornUI:

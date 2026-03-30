@@ -83,12 +83,18 @@ All monitoring and ArgoCD components have been updated so requests reflect real 
 |-----------|-------------|-------------|-------|
 | Prometheus | 256Mi | 384Mi | 512Mi |
 | Loki | 64Mi | 128Mi | 256Mi |
-| Grafana | 32Mi | 64Mi | 128Mi |
 | Promtail (per node) | 32Mi | 32Mi | 64Mi |
 | ArgoCD controller | — (none) | 256Mi | 512Mi |
 | ArgoCD server | — (none) | 128Mi | 256Mi |
 | ArgoCD repo-server | — (none) | 128Mi | 256Mi |
 | ArgoCD redis | — (none) | 32Mi | 128Mi |
+
+ArgoCD `notifications` and `applicationSet` controllers are **disabled** — unused in
+this cluster. This saves ~46Mi of untracked memory.
+
+Grafana is **disabled** until the cluster has sufficient headroom. Re-enable by adding
+`grafana.yaml` back to `cluster/argocd/addons/kustomization.yaml` and then manually
+creating the ArgoCD Application.
 
 ---
 
@@ -100,15 +106,14 @@ Approximate steady-state peak usage across all system components:
 |----------|----------|
 | OS / kernel / systemd | ~200MB (reserved: 512MB) |
 | K3s control plane pods | ~500MB |
-| Longhorn | ~400MB |
+| Longhorn | ~350MB |
 | Traefik + MetalLB | ~100MB |
-| ArgoCD | ~400MB |
-| Prometheus | ~384MB |
-| Loki | ~128MB |
-| Grafana | ~64MB |
+| ArgoCD | ~350MB |
+| Prometheus | ~350MB |
+| Loki | ~100MB |
 | Promtail (controller) | ~32MB |
-| **Total (approx)** | **~2.2GB** |
-| **Headroom to soft eviction** | **~1.3GB** |
+| **Total (approx)** | **~2.0GB** |
+| **Headroom to soft eviction** | **~0.5GB** |
 
 This leaves ~1.3GB before kubelet soft eviction starts. That's the budget for
 application workloads deployed on the controller, and for burst spikes.
@@ -179,13 +184,7 @@ See `bootstrap/docs/02-k3s-server.md` for the full reinstall procedure.
 
 - **K3s official SD card warning**: The K3s docs explicitly state *"SD cards and eMMC cannot handle the IO load"* for etcd write operations. We use K3s in single-server mode (SQLite, not etcd), which is far less write-intensive — but this is still a long-term reliability concern. An external USB SSD for the Pi 4's storage would significantly improve stability.
 - **Pi Zero 2 W is at the K3s minimum**: K3s requires 512MB RAM for agents; Pi Zeros have exactly 512MB. They are not candidates for any additional system workloads.
-- **Monitoring on a worker**: Prometheus and Grafana could move to a worker node if
-  the monitoring stack keeps growing, but Pi Zero 2 W has only 512MB — not viable
-  without a beefier worker node.
-- **Reduce Loki retention**: Dropping `retention_period` from 7d to 3d cuts Loki's
-  disk and memory usage. Edit `cluster/monitoring/loki/loki-configmap.yaml`.
-- **Increase scrape interval**: `scrape_interval: 60s` (from 30s) halves Prometheus
-  ingestion load with minimal practical impact for a homelab.
+- **Monitoring on a worker**: Prometheus could move to a worker node if the stack grows, but Pi Zero 2 W has only 512MB — not viable without a beefier worker node.
 - **Disable node-exporter on Pi Zeros**: Pi Zeros are already memory-constrained.
   If promtail causes OOMKills on workers, remove the Pi Zero toleration from the
   Promtail DaemonSet.

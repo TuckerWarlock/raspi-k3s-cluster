@@ -8,8 +8,6 @@
 server:
   service:
     type: ClusterIP
-  # Resource limits prevent ArgoCD server from starving other pods under memory pressure.
-  # These are sized for a small cluster (< 10 ArgoCD Applications).
   resources:
     requests:
       cpu: 50m
@@ -18,17 +16,13 @@ server:
       cpu: 100m
       memory: 256Mi
 
-# Run argocd-server in HTTP mode so Traefik can proxy it without a redirect loop.
-# Traefik handles TLS termination at the ingress layer.
 configs:
   params:
     server.insecure: true
 
-# Dex (OIDC/SSO) is unused in this cluster
 dex:
   enabled: false
 
-# Single-instance Redis is fine for this cluster size; state lives in CRDs
 redis:
   enabled: true
   resources:
@@ -48,14 +42,13 @@ repoServer:
       cpu: 100m
       memory: 256Mi
 
+# Notifications controller is unused in this cluster (no alerting configured)
+notifications:
+  enabled: false
+
+# ApplicationSet controller is unused — we use plain Application CRDs, not ApplicationSets
 applicationSet:
-  resources:
-    requests:
-      cpu: 10m
-      memory: 32Mi
-    limits:
-      cpu: 50m
-      memory: 128Mi
+  enabled: false
 
 controller:
   resources:
