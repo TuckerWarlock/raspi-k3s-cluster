@@ -7,3 +7,4 @@ resources:
   - prometheus-rbac.yaml
   - prometheus-config.yaml
   - prometheus-statefulset.yaml
+  - prometheus-ingress.yaml
