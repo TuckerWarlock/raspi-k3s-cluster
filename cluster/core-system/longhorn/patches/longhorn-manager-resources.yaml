@@ -1,0 +1,21 @@
+# Strategic merge patch to apply resource limits to the longhorn-manager DaemonSet.
+# The Longhorn Helm chart (1.7.2) does not expose longhornManager.resources in values.yaml,
+# so limits cannot be set via chart values. This patch is applied directly and tracked
+# via ignoreDifferences in the Longhorn ArgoCD Application to prevent drift detection.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: longhorn-manager
+  namespace: longhorn-system
+spec:
+  template:
+    spec:
+      containers:
+        - name: longhorn-manager
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

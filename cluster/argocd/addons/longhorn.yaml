@@ -17,6 +17,11 @@ spec:
     - repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
       targetRevision: main
       ref: values
+    # Kustomize patches for settings not exposed in Helm chart values
+    # (e.g. longhorn-manager DaemonSet resource limits)
+    - repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
+      targetRevision: main
+      path: cluster/core-system/longhorn/patches
   destination:
     server: https://kubernetes.default.svc
     namespace: longhorn-system
@@ -26,3 +31,12 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  # ignoreDifferences for fields that are patched outside the Helm chart:
+  # - longhorn-manager container resources (chart gap — not configurable via values.yaml)
+  ignoreDifferences:
+    - group: apps
+      kind: DaemonSet
+      name: longhorn-manager
+      namespace: longhorn-system
+      jqPathExpressions:
+        - .spec.template.spec.containers[] | select(.name == "longhorn-manager") | .resources

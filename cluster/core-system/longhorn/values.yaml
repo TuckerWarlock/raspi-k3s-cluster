@@ -5,6 +5,8 @@ nodeSelector:
 defaultSettings:
   # Single replica is appropriate for this small cluster
   defaultReplicaCount: 1
+  # Reserve 12% of controller CPU for each instance-manager pod (Longhorn default)
+  guaranteedInstanceManagerCPU: 12
 
 # Reduce CSI sidecars from 2 to 1 — single replica is sufficient for a single-node storage backend
 csi:
@@ -16,3 +18,7 @@ csi:
 # Single UI replica is sufficient; default is 2
 longhornUI:
   replicas: 1
+
+# Note: longhornManager DaemonSet resource limits are not configurable via Helm values (chart gap).
+# Resource limits are applied via a kubectl strategic merge patch in cluster/core-system/longhorn/patches/
+# and tracked with ignoreDifferences in the Longhorn ArgoCD Application.

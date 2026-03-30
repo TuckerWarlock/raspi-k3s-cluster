@@ -56,9 +56,11 @@ repoServer:
 notifications:
   enabled: false
 
-# ApplicationSet controller is unused — we use plain Application CRDs, not ApplicationSets
+# ApplicationSet controller is unused — we use plain Application CRDs, not ApplicationSets.
+# Note: applicationSet.enabled is not a valid chart key (silently ignored).
+# Setting replicas: 0 is the correct way to disable this controller in chart 7.8.1.
 applicationSet:
-  enabled: false
+  replicas: 0
 
 controller:
   resources:
