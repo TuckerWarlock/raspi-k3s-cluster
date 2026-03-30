@@ -48,12 +48,24 @@ Configured in `install-k3s-server.sh` via `--kubelet-arg`:
 
 | Flag | Value | Meaning |
 |------|-------|---------|
-| `system-reserved` | `cpu=250m,memory=512Mi` | Reserve 512MB for the OS/kernel/systemd — pods cannot consume this |
-| `eviction-soft` | `memory.available<512Mi` | Kubelet starts gracefully evicting pods (with 2m grace period) |
-| `eviction-hard` | `memory.available<300Mi` | Kubelet force-evicts pods immediately |
+| `system-reserved` | `cpu=250m,memory=512Mi` | Reserve 512MB for the OS/kernel/systemd — not allocatable to pods |
+| `eviction-soft` | `memory.available<512Mi` | Kubelet marks node as MemoryPressure; starts evicting pods after the grace period |
+| `eviction-soft-grace-period` | `memory.available=2m` | Threshold must hold for 2 minutes before soft eviction begins |
+| `eviction-max-pod-grace-period` | `90` | Pods get up to 90 seconds to terminate cleanly during soft eviction |
+| `eviction-hard` | `memory.available<300Mi` + disk defaults | Kubelet force-evicts pods immediately (0s grace) |
 
-With 512MB system-reserved, the Pi 4 effectively has ~3.5GB available for pods.
-Eviction starts before memory is fully exhausted, giving pods time to shut down cleanly.
+**Important:** The Kubernetes docs state that setting any custom `eviction-hard` value **disables all other defaults** — they become zero, not inherited. The K8s defaults are:
+- `memory.available<100Mi`
+- `nodefs.available<10%`
+- `imagefs.available<15%`
+- `nodefs.inodesFree<5%` (Linux)
+
+Our flag explicitly restores all the disk defaults alongside the tightened memory threshold:
+```
+eviction-hard=memory.available<300Mi,nodefs.available<10%,imagefs.available<15%,nodefs.inodesFree<5%
+```
+
+If you ever adjust this flag, you must re-include all thresholds you want active.
 
 > **Re-applying after a reflash:** These flags are baked into the `install-k3s-server.sh`
 > invocation. Re-running the script after a reflash automatically re-applies them.
@@ -165,6 +177,8 @@ See `bootstrap/docs/02-k3s-server.md` for the full reinstall procedure.
 
 ## Considerations for Future Growth
 
+- **K3s official SD card warning**: The K3s docs explicitly state *"SD cards and eMMC cannot handle the IO load"* for etcd write operations. We use K3s in single-server mode (SQLite, not etcd), which is far less write-intensive — but this is still a long-term reliability concern. An external USB SSD for the Pi 4's storage would significantly improve stability.
+- **Pi Zero 2 W is at the K3s minimum**: K3s requires 512MB RAM for agents; Pi Zeros have exactly 512MB. They are not candidates for any additional system workloads.
 - **Monitoring on a worker**: Prometheus and Grafana could move to a worker node if
   the monitoring stack keeps growing, but Pi Zero 2 W has only 512MB — not viable
   without a beefier worker node.

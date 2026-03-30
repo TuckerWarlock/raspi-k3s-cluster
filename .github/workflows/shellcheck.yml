@@ -1,0 +1,38 @@
+# shellcheck.yml — lints all shell scripts in bootstrap/scripts/ and local_ci.sh
+# Runs on every push to main and on PRs that touch shell scripts or this workflow.
+# ShellCheck catches real bugs (unquoted variables, incorrect redirects, unsafe
+# patterns) not just style — failure here means the script is probably broken.
+
+name: ShellCheck
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "bootstrap/scripts/**"
+      - "local_ci.sh"
+      - ".github/workflows/shellcheck.yml"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck
+        run: |
+          find bootstrap/scripts -name "*.sh" -print0 | sort -z \
+            | xargs -0 shellcheck --severity=warning
+          shellcheck --severity=warning local_ci.sh

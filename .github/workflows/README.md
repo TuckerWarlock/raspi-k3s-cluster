@@ -4,6 +4,11 @@ This directory contains validation-only CI workflows. They do not connect to a l
 
 ## Files
 
+- `shellcheck.yml`
+	- Lints all shell scripts in `bootstrap/scripts/` and `local_ci.sh` with ShellCheck.
+	- Catches real bugs: unquoted variables, incorrect redirects, unsafe patterns.
+	- Runs at `--severity=warning` (warnings + errors; style notes suppressed).
+
 - `helm-validate.yml`
 	- Entry workflow for pull requests and manual runs.
 	- Defines two jobs:
@@ -19,6 +24,14 @@ This directory contains validation-only CI workflows. They do not connect to a l
 
 ## Validation Flow
 
+### ShellCheck (`shellcheck.yml`)
+
+1. Install ShellCheck via `apt`.
+2. Discover all `*.sh` files under `bootstrap/scripts/` plus `local_ci.sh`.
+3. Run `shellcheck --severity=warning` across all scripts in one invocation.
+
+### Helm/Pluto (`helm-validate.yml` → `reusable-manifest-validation.yml`)
+
 1. Checkout repository.
 2. Install `helmfile` via `helmfile/helmfile-action`.
 3. Render all Helm releases from `helmfile.yaml` using `helmfile template > /tmp/all-rendered.yaml`.
@@ -31,6 +44,14 @@ This directory contains validation-only CI workflows. They do not connect to a l
 	 - Check both raw manifests and rendered manifests for deprecated/removed APIs.
 
 ## Trigger Conditions
+
+`shellcheck.yml` runs on:
+
+- `pull_request` to `main` when files change in:
+	- `bootstrap/scripts/**`
+	- `local_ci.sh`
+	- `.github/workflows/shellcheck.yml`
+- `workflow_dispatch` for manual runs
 
 `helm-validate.yml` runs on:
 
@@ -51,3 +72,4 @@ This directory contains validation-only CI workflows. They do not connect to a l
 - Catch rendering and schema regressions early.
 - Detect Kubernetes API deprecations before cluster upgrades.
 - Keep CI portable as new Helm releases are added by updating `helmfile.yaml` only.
+- Catch shell scripting bugs (bad redirects, unquoted expansions) before scripts run on hardware.

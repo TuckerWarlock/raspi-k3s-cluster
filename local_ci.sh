@@ -2,8 +2,9 @@
 set -euo pipefail
 
 # =============================================================================
-# local_ci.sh — mirrors .github/workflows/helm-validate.yml locally
-# Runs both jobs: kubeconform (Helm schema validation) + Pluto (API deprecation)
+# local_ci.sh — mirrors .github/workflows/ CI jobs locally
+# Runs all jobs: shellcheck (script linting) + kubeconform (Helm schema
+# validation) + Pluto (API deprecation)
 #
 # Helm releases are discovered automatically from helmfile.yaml — add a new
 # chart there and this script (and CI) will pick it up with no other changes.
@@ -13,10 +14,10 @@ KUBECONFORM_VERSION="v0.6.7"
 PLUTO_VERSION="5.23.5"
 HELMFILE_VERSION="v1.4.2"
 K8S_TARGET_VERSION="v1.31.0"
-
 # Resolve repo root regardless of where the script is called from
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="${REPO_ROOT}/tmp"
+SHELLCHECK_BIN=""
 HELMFILE_BIN=""
 KUBECONFORM_BIN=""
 PLUTO_BIN=""
@@ -108,8 +109,7 @@ install_kubeconform() {
   pass "kubeconform $("$KUBECONFORM_BIN" -v 2>&1) (curl fallback)"
 }
 
-install_pluto() {
-  if [[ -n "$PLUTO_BIN" && -x "$PLUTO_BIN" ]]; then
+install_pluto() {  if [[ -n "$PLUTO_BIN" && -x "$PLUTO_BIN" ]]; then
     return
   fi
 
@@ -132,6 +132,36 @@ install_pluto() {
   pass "Pluto $("$PLUTO_BIN" version 2>&1 | head -1) (curl fallback)"
 }
 
+install_shellcheck() {
+  if [[ -n "$SHELLCHECK_BIN" && -x "$SHELLCHECK_BIN" ]]; then
+    return
+  fi
+
+  if command -v shellcheck &>/dev/null; then
+    SHELLCHECK_BIN="$(command -v shellcheck)"
+    pass "shellcheck $(shellcheck --version | awk '/^version:/{print $2}') (system)"
+    return
+  fi
+
+  step "Installing shellcheck"
+
+  if command -v brew &>/dev/null; then
+    brew install shellcheck
+    SHELLCHECK_BIN="$(command -v shellcheck)"
+    pass "shellcheck $("$SHELLCHECK_BIN" --version | awk '/^version:/{print $2}') (brew)"
+    return
+  fi
+
+  if command -v apt-get &>/dev/null; then
+    sudo apt-get install -y shellcheck
+    SHELLCHECK_BIN="$(command -v shellcheck)"
+    pass "shellcheck $("$SHELLCHECK_BIN" --version | awk '/^version:/{print $2}') (apt)"
+    return
+  fi
+
+  fail "shellcheck not found — install it: brew install shellcheck (macOS) or apt install shellcheck (Linux)"
+}
+
 # ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
@@ -145,6 +175,19 @@ step "Detected platform: $PLATFORM"
 
 mkdir -p "$WORK_DIR"
 cd "$REPO_ROOT"
+
+# ---------------------------------------------------------------------------
+# Job 0: shellcheck — shell script linting
+# ---------------------------------------------------------------------------
+
+install_shellcheck
+
+step "shellcheck: linting all shell scripts"
+# Use xargs + find so this works on macOS (system Bash 3.2, no mapfile)
+find "$REPO_ROOT/bootstrap/scripts" -name "*.sh" -print0 | sort -z \
+  | xargs -0 "$SHELLCHECK_BIN" --severity=warning
+"$SHELLCHECK_BIN" --severity=warning "$REPO_ROOT/local_ci.sh"
+pass "All shell scripts passed shellcheck"
 
 # ---------------------------------------------------------------------------
 # Helmfile — renders all releases defined in helmfile.yaml

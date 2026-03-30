@@ -40,18 +40,22 @@ check_cgroups
 echo ""
 echo "==> Installing K3s server on Pi 4 controller..."
 echo "    Memory management flags:"
-echo "      system-reserved=512Mi  — keeps 512MB free for OS/kernel/systemd"
-echo "      eviction-soft=512Mi    — gracefully evicts pods before hitting hard limit"
-echo "      eviction-hard=300Mi    — force-evicts pods to prevent kernel OOM killer"
+echo "      system-reserved=512Mi          — reserves 512MB for OS/kernel/systemd (not allocatable to pods)"
+echo "      eviction-soft=512Mi avail      — start gracefully evicting pods after 2m sustained pressure"
+echo "      eviction-hard=300Mi avail      — force-evict pods immediately to prevent kernel OOM killer"
+echo "      eviction-max-pod-grace-period  — give pods up to 90s to shut down cleanly during soft eviction"
+echo "      NOTE: eviction-hard includes all K8s defaults (imagefs, inodesFree) — dropping any custom"
+echo "            threshold without restoring the default silently disables that protection."
 
 curl -sfL https://get.k3s.io | sh -s - server \
   --write-kubeconfig-mode 644 \
   --disable traefik \
   --disable servicelb \
   --kubelet-arg=system-reserved=cpu=250m,memory=512Mi \
-  --kubelet-arg=eviction-hard=memory.available<300Mi,nodefs.available<10% \
-  --kubelet-arg=eviction-soft=memory.available<512Mi,nodefs.available<15% \
-  --kubelet-arg=eviction-soft-grace-period=memory.available=2m,nodefs.available=5m
+  "--kubelet-arg=eviction-hard=memory.available<300Mi,nodefs.available<10%,imagefs.available<15%,nodefs.inodesFree<5%" \
+  "--kubelet-arg=eviction-soft=memory.available<512Mi,nodefs.available<15%" \
+  "--kubelet-arg=eviction-soft-grace-period=memory.available=2m,nodefs.available=5m" \
+  --kubelet-arg=eviction-max-pod-grace-period=90
 
 echo ""
 echo "==> Waiting for K3s to be ready..."
