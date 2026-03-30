@@ -44,7 +44,7 @@ spec:
 
       containers:
       - name: grafana
-        image: grafana/grafana:latest
+        image: grafana/grafana:12.4.2
         ports:
         - name: web
           containerPort: 3000
@@ -104,3 +104,25 @@ spec:
   - port: 3000
     targetPort: 3000
     name: web
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: monitoring
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: grafana.cluster.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 3000
