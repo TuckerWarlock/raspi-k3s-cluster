@@ -39,11 +39,19 @@ check_cgroups
 
 echo ""
 echo "==> Installing K3s server on Pi 4 controller..."
+echo "    Memory management flags:"
+echo "      system-reserved=512Mi  — keeps 512MB free for OS/kernel/systemd"
+echo "      eviction-soft=512Mi    — gracefully evicts pods before hitting hard limit"
+echo "      eviction-hard=300Mi    — force-evicts pods to prevent kernel OOM killer"
 
 curl -sfL https://get.k3s.io | sh -s - server \
   --write-kubeconfig-mode 644 \
   --disable traefik \
-  --disable servicelb
+  --disable servicelb \
+  --kubelet-arg=system-reserved=cpu=250m,memory=512Mi \
+  --kubelet-arg=eviction-hard=memory.available<300Mi,nodefs.available<10% \
+  --kubelet-arg=eviction-soft=memory.available<512Mi,nodefs.available<15% \
+  --kubelet-arg=eviction-soft-grace-period=memory.available=2m,nodefs.available=5m
 
 echo ""
 echo "==> Waiting for K3s to be ready..."

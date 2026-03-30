@@ -43,6 +43,42 @@ eval "$(oh-my-posh init bash --config ~/.cache/oh-my-posh/themes/night-owl.omp.j
 EOF
 
 echo ""
+echo "==> Creating 1GB swap file..."
+# Swap gives the kernel a safety valve — pods slow down instead of crashing the SD card.
+# K3s kubelet eviction will still evict pods before swap fills, so this is a last resort.
+if [ -f /swapfile ]; then
+  echo "    /swapfile already exists, skipping"
+else
+  sudo fallocate -l 1G /swapfile
+  sudo chmod 600 /swapfile
+  sudo mkswap /swapfile
+  sudo swapon /swapfile
+  # Persist across reboots
+  if ! grep -q '/swapfile' /etc/fstab; then
+    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+  fi
+  echo "    1GB swap created and enabled at /swapfile"
+fi
+
+echo ""
+echo "==> Applying kernel memory tuning..."
+sudo tee /etc/sysctl.d/99-k3s-memory.conf > /dev/null << 'EOF'
+# Use swap only under real pressure — prefer RAM
+vm.swappiness=10
+
+# Be less aggressive about freeing page cache
+vm.vfs_cache_pressure=50
+
+# Kill the task that triggered OOM, not a random victim
+vm.oom_kill_allocating_task=1
+
+# Do not panic on OOM — let the OOM killer recover gracefully
+vm.panic_on_oom=0
+EOF
+sudo sysctl --system > /dev/null
+echo "    sysctl tuning applied (/etc/sysctl.d/99-k3s-memory.conf)"
+
+echo ""
 echo "==> Installing clusterctrl shutdown hook..."
 sudo tee /etc/systemd/system/clusterctrl-off.service > /dev/null << 'EOF'
 [Unit]

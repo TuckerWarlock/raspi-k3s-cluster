@@ -93,6 +93,20 @@ Chosen over full kubeadm because:
 
 ---
 
+## Memory Management
+
+The Pi 4 controller runs all system workloads on 4GB RAM. Three layers prevent
+OOM-induced SD card corruption:
+
+1. **Swap (1GB)** — last-resort buffer; created by `setup-controller.sh`
+2. **Kubelet eviction** — soft evict at 512Mi available, hard evict at 300Mi available
+3. **Accurate resource requests** — all components sized to reflect real usage
+
+See `bootstrap/docs/memory-management.md` for the full budget, safe deployment
+procedure, and post-reflash restore steps.
+
+---
+
 ## Workload Placement
 
 Pi Zero nodes have 512MB RAM each. All cluster infrastructure and system workloads
