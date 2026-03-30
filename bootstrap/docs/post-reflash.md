@@ -158,9 +158,11 @@ kubectl label node p1 p2 p3 p4 hardware=pi-zero-2w
 
 ---
 
-## Phase 3 — Core Stack (Helm)
+## Phase 3 — Bootstrap ArgoCD
 
 ### 3.1 — Install open-iscsi on workers (required for Longhorn)
+
+Longhorn needs `iscsid` running on all nodes before it can attach volumes:
 
 ```bash
 for i in 1 2 3 4; do
@@ -168,31 +170,56 @@ for i in 1 2 3 4; do
 done
 ```
 
-### 3.2 — Run helmfile sync
+### 3.2 — Run helmfile sync (ArgoCD only)
 
-From the Pi 4 (or your laptop if kubeconfig is configured):
+`helmfile sync` now installs **only ArgoCD** — MetalLB, Traefik, and Longhorn are
+deployed and managed by ArgoCD after the root Application is applied.
 
 ```bash
 cd ~/raspi-k3s-cluster
 helmfile sync
 ```
 
-This installs MetalLB, Traefik, Longhorn, and ArgoCD in one shot. It will take a few
-minutes for all pods to reach `Running`.
-
-### 3.3 — Apply MetalLB pool manifests
-
-> ⚠️ **This step is always required after a reflash.** MetalLB's `IPAddressPool` and
-> `L2Advertisement` are raw manifests — they are **not** applied by Helm or ArgoCD.
-> Without them, every `LoadBalancer` service stays `<pending>` and nothing is reachable
-> from your browser, even though all pods show `Running`.
+Wait for ArgoCD pods to be ready (~2 minutes):
 
 ```bash
-kubectl apply -f cluster/core-system/metallb/ipaddresspool.yaml
-kubectl apply -f cluster/core-system/metallb/l2advertisement.yaml
+kubectl -n argocd get pods -w
+# Wait until application-controller, repo-server, redis, and server are all 1/1 Running
 ```
 
-Verify Traefik receives an IP within ~5 seconds:
+### 3.3 — Apply the ArgoCD ingress and root Application
+
+The ingress exposes `argocd.cluster.local` via Traefik (which ArgoCD is about to deploy):
+
+```bash
+kubectl apply -f cluster/argocd/argocd-ingress.yaml
+kubectl apply -f cluster/argocd/root-application.yaml
+```
+
+The root Application tells ArgoCD to watch `cluster/argocd/addons/` and deploy everything
+defined there. ArgoCD will now install (in roughly this order, automatically):
+
+| App | What it deploys | Namespace |
+|-----|----------------|-----------|
+| `metallb` | MetalLB controller + speaker | `metallb-system` |
+| `metallb-config` | IPAddressPool + L2Advertisement | `metallb-system` |
+| `traefik` | Traefik ingress controller | `traefik` |
+| `longhorn` | Longhorn storage + CSI | `longhorn-system` |
+| `prometheus` | Prometheus + node-exporter | `monitoring` |
+| `loki` | Loki log aggregation | `monitoring` |
+| `promtail` | Promtail log shipping | `monitoring` |
+
+> **`metallb-config` will retry automatically** — it applies the IP pool only after MetalLB
+> CRDs are ready. No manual intervention needed.
+
+Watch all applications reach `Synced` + `Healthy`:
+
+```bash
+kubectl -n argocd get applications -w
+```
+
+Traefik gets its `EXTERNAL-IP` from MetalLB once both are healthy:
+
 ```bash
 kubectl get svc -n traefik
 # EXTERNAL-IP should show 192.168.1.241
@@ -211,24 +238,9 @@ echo "192.168.1.241 grafana.cluster.local" | sudo tee -a /etc/hosts
 
 ---
 
-## Phase 4 — ArgoCD Bootstrap
+## Phase 4 — ArgoCD First Login
 
-### 4.1 — Wait for ArgoCD pods to be ready
-
-```bash
-kubectl -n argocd get pods -w
-# Wait until all pods are 1/1 Running (application-controller may take ~2 minutes)
-```
-
-### 4.2 — Apply the ArgoCD ingress
-
-The ingress is a raw manifest, not part of the Helm chart:
-
-```bash
-kubectl apply -f cluster/argocd/argocd-ingress.yaml
-```
-
-### 4.3 — Get the initial admin password
+### 4.1 — Get the initial admin password
 
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret \
@@ -238,22 +250,7 @@ echo
 
 Open `http://argocd.cluster.local` → log in as `admin` with the above password.
 
-### 4.4 — Bootstrap the App of Apps
-
-Apply the root Application CRD once. This tells ArgoCD to manage everything in
-`cluster/argocd/addons/`:
-
-```bash
-kubectl apply -f cluster/argocd/root-application.yaml
-```
-
-ArgoCD will auto-sync and deploy all configured workloads (Prometheus, Loki, Promtail,
-etc.) within ~3 minutes.
-
-Watch sync status:
-```bash
-kubectl -n argocd get applications -w
-```
+> Change the password after first login: **Settings → User Info → Update Password.**
 
 ---
 

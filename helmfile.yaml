@@ -1,40 +1,11 @@
 repositories:
-  - name: metallb
-    url: https://metallb.github.io/metallb
-  - name: traefik
-    url: https://traefik.github.io/charts
-  - name: longhorn
-    url: https://charts.longhorn.io
   - name: argo
     url: https://argoproj.github.io/argo-helm
 
 releases:
-  - name: metallb
-    namespace: metallb-system
-    chart: metallb/metallb
-    version: 0.14.9
-    createNamespace: true
-    values:
-      - cluster/core-system/metallb/values.yaml
-
-  - name: traefik
-    namespace: traefik
-    chart: traefik/traefik
-    version: 39.0.6
-    createNamespace: true
-    values:
-      - cluster/core-system/traefik/values.yaml
-
-  - name: longhorn
-    namespace: longhorn-system
-    chart: longhorn/longhorn
-    version: 1.7.2
-    createNamespace: true
-    values:
-      - cluster/core-system/longhorn/values.yaml
-
-  # ArgoCD is bootstrapped once via helmfile; afterwards it manages itself
-  # via cluster/argocd/argocd-values.yaml committed to Git.
+  # ArgoCD is the only component bootstrapped via helmfile.
+  # Everything else (MetalLB, Traefik, Longhorn, monitoring) is managed by ArgoCD
+  # after the root Application is applied (kubectl apply -f cluster/argocd/root-application.yaml).
   - name: argocd
     namespace: argocd
     chart: argo/argo-cd

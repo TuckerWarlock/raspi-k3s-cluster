@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metallb-config
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
+    path: cluster/core-system/metallb/config
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: metallb-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    # Retry because IPAddressPool and L2Advertisement CRDs are installed by the
+    # metallb Helm chart — metallb-config must wait for those CRDs to be ready.
+    retry:
+      limit: 10
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
