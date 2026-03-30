@@ -39,8 +39,18 @@ repoServer:
       cpu: 50m
       memory: 128Mi
     limits:
-      cpu: 100m
-      memory: 256Mi
+      cpu: 200m
+      # Bumped from 256Mi — repo-server fetches and caches Helm charts for multi-source
+      # Applications. Under-sizing caused liveness probe timeouts on simultaneous syncs.
+      memory: 384Mi
+  # Default liveness probe has timeoutSeconds: 1 which is too tight on a Pi 4 ARM64
+  # processor when the repo-server is busy fetching multiple Helm charts concurrently.
+  # Increasing timeout and failure threshold prevents spurious restarts under load.
+  livenessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 5
 
 # Notifications controller is unused in this cluster (no alerting configured)
 notifications:
