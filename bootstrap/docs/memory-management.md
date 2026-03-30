@@ -178,6 +178,26 @@ sudo bash bootstrap/scripts/install-k3s-server.sh
 
 See `bootstrap/docs/02-k3s-server.md` for the full reinstall procedure.
 
+### Apply MetalLB pool after reinstall
+
+MetalLB's `IPAddressPool` and `L2Advertisement` are raw manifests — they are **not**
+Helm-managed and are not applied automatically by ArgoCD on a fresh install. Without
+them, all `LoadBalancer` services stay in `<pending>` and Traefik (and everything
+behind it) is unreachable.
+
+Run this from your laptop once MetalLB is running:
+
+```bash
+kubectl apply -f cluster/core-system/metallb/ipaddresspool.yaml
+kubectl apply -f cluster/core-system/metallb/l2advertisement.yaml
+
+# Verify Traefik gets an IP (should be 192.168.1.241 within ~5s):
+kubectl get svc -n traefik
+```
+
+Symptom if you forget: ArgoCD, Prometheus, and any other ingress-backed service all
+time out in the browser, even though all pods show `Running`.
+
 ---
 
 ## Considerations for Future Growth
