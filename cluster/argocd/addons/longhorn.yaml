@@ -17,11 +17,6 @@ spec:
     - repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
       targetRevision: main
       ref: values
-    # Kustomize patches for settings not exposed in Helm chart values
-    # (e.g. longhorn-manager DaemonSet resource limits)
-    - repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
-      targetRevision: main
-      path: cluster/core-system/longhorn/patches
   destination:
     server: https://kubernetes.default.svc
     namespace: longhorn-system

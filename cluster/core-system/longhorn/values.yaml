@@ -20,5 +20,9 @@ longhornUI:
   replicas: 1
 
 # Note: longhornManager DaemonSet resource limits are not configurable via Helm values (chart gap).
-# Resource limits are applied via a kubectl strategic merge patch in cluster/core-system/longhorn/patches/
-# and tracked with ignoreDifferences in the Longhorn ArgoCD Application.
+# Applied via kubectl strategic merge patch (run once, not tracked in Git):
+#   kubectl patch daemonset longhorn-manager -n longhorn-system --type=strategic \
+#     -p '{"spec":{"template":{"spec":{"containers":[{"name":"longhorn-manager",
+#          "resources":{"requests":{"cpu":"50m","memory":"128Mi"},
+#                       "limits":{"cpu":"250m","memory":"256Mi"}}}]}}}}'
+# ignoreDifferences in the Longhorn ArgoCD Application prevents ArgoCD from reverting this.

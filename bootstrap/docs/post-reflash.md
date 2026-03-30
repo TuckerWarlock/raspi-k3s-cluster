@@ -226,6 +226,18 @@ kubectl get svc -n traefik
 # EXTERNAL-IP should show 192.168.1.241
 ```
 
+### 3.5 — Re-apply Longhorn manager resource limits (chart gap)
+
+The Longhorn Helm chart doesn't expose `longhornManager.resources`. Resource limits are applied
+once via kubectl and protected from ArgoCD drift via `ignoreDifferences`:
+
+```bash
+kubectl patch daemonset longhorn-manager -n longhorn-system --type=strategic \
+  -p '{"spec":{"template":{"spec":{"containers":[{"name":"longhorn-manager",
+       "resources":{"requests":{"cpu":"50m","memory":"128Mi"},
+                    "limits":{"cpu":"250m","memory":"256Mi"}}}]}}}}'
+```
+
 ### 3.4 — Update /etc/hosts on your laptop (if needed)
 
 If the Traefik IP has changed or this is a fresh laptop:
