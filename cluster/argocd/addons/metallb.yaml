@@ -26,3 +26,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # ServerSideApply prevents CRD drift — MetalLB CRDs (e.g. bgppeers.metallb.io)
+      # have server-managed fields that client-side apply can't reconcile cleanly.
+      - ServerSideApply=true
