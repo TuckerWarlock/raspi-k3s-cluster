@@ -8,11 +8,13 @@ data:
     apiVersion: 1
     datasources:
       - name: Prometheus
+        uid: prometheus
         type: prometheus
         access: proxy
         url: http://prometheus:9090
         isDefault: true
       - name: Loki
+        uid: loki
         type: loki
         access: proxy
         url: http://loki:3100
@@ -68,6 +70,10 @@ spec:
           mountPath: /var/lib/grafana
         - name: datasources
           mountPath: /etc/grafana/provisioning/datasources
+        - name: dashboard-provider
+          mountPath: /etc/grafana/provisioning/dashboards
+        - name: dashboards
+          mountPath: /var/lib/grafana/dashboards
       
       volumes:
       - name: storage
@@ -76,6 +82,12 @@ spec:
       - name: datasources
         configMap:
           name: grafana-datasource
+      - name: dashboard-provider
+        configMap:
+          name: grafana-dashboard-provider
+      - name: dashboards
+        configMap:
+          name: grafana-dashboard-cluster
 
 ---
 apiVersion: v1

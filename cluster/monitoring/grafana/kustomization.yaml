@@ -5,3 +5,4 @@ namespace: monitoring
 
 resources:
   - grafana.yaml
+  - grafana-dashboards.yaml
