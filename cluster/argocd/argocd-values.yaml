@@ -19,6 +19,13 @@ server:
 configs:
   params:
     server.insecure: true
+    # Reduced from defaults (20/10) — this cluster has ~10 apps.
+    # Fewer goroutines = less heap pressure on the app controller.
+    controller.status.processors: "5"
+    controller.operation.processors: "3"
+  cm:
+    # 5-minute reconciliation (default 3 min) — reduces reconcile churn on a memory-constrained node.
+    timeout.reconciliation: 300s
 
 dex:
   enabled: false
