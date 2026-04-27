@@ -22,7 +22,7 @@ Complete setup guides are in [bootstrap/docs/](bootstrap/docs/):
 4. [MetalLB load balancer](bootstrap/docs/04-metallb-load-balancer.md)
 5. [Traefik ingress controller](bootstrap/docs/05-traefik-ingress.md)
 6. [Longhorn distributed storage](bootstrap/docs/06-longhorn-storage.md)
-7. [Prometheus + Grafana monitoring](bootstrap/docs/08-prometheus-grafana-monitoring.md)
+7. [Prometheus monitoring](bootstrap/docs/08-prometheus-grafana-monitoring.md)
 8. ArgoCD GitOps — deployed via `helmfile sync`
 
 > **Rebuilding after a reflash?** → [`bootstrap/docs/post-reflash.md`](bootstrap/docs/post-reflash.md)
@@ -68,13 +68,9 @@ raspi-k3s-cluster/
 │   │   └── longhorn/                   # Distributed storage
 │   │       ├── values.yaml             # Helm values
 │   │       └── test-pvc.yaml           # Test PVC
-│   ├── monitoring/                     # Monitoring (via kubectl apply)
+│   ├── monitoring/                     # Monitoring (Prometheus via Kustomize)
 │   │   ├── namespace.yaml
-│   │   ├── prometheus-config.yaml
-│   │   ├── prometheus-rbac.yaml
-│   │   ├── prometheus-statefulset.yaml
-│   │   ├── grafana.yaml
-│   │   └── ingress.yaml
+│   │   └── prometheus/                 # Prometheus StatefulSet + config
 │   └── argocd/                         # GitOps management (via helmfile)
 │       ├── namespace.yaml
 │       ├── application-cluster.yaml
@@ -111,7 +107,6 @@ raspi-k3s-cluster/
 - [Longhorn](https://longhorn.io/) — distributed block storage
 - [ArgoCD](https://argoproj.github.io/cd/) — GitOps continuous deployment
 - [Prometheus](https://prometheus.io/) — metrics collection
-- [Grafana](https://grafana.com/) — metrics visualization
 
 ### Validation & CI
 - [kubeconform](https://github.com/yannh/kubeconform) — Kubernetes manifest schema validation

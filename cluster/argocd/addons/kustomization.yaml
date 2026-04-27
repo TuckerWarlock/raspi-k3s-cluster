@@ -13,4 +13,3 @@ resources:
   - prometheus.yaml
   - loki.yaml
   - promtail.yaml
-  - grafana.yaml
