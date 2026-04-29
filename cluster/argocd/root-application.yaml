@@ -5,8 +5,9 @@
 #   kubectl apply -f cluster/argocd/root-application.yaml
 #
 # What this deploys (via addons/kustomization.yaml):
-#   - prometheus (cluster/monitoring/prometheus)
-#   - grafana    (cluster/monitoring/grafana)
+#   - Core infra: MetalLB, Traefik, Longhorn
+#   - ArgoCD config (ingress, etc.)
+#   - Workloads root app → manages cluster/argocd/workloads/ (Monday, etc.)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

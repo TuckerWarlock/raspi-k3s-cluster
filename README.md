@@ -23,6 +23,7 @@ Complete setup guides are in [bootstrap/docs/](bootstrap/docs/):
 5. [Traefik ingress controller](bootstrap/docs/05-traefik-ingress.md)
 6. [Longhorn distributed storage](bootstrap/docs/06-longhorn-storage.md)
 7. ArgoCD GitOps — deployed via `helmfile sync`
+8. [Monday AI assistant](bootstrap/docs/10-monday-ai-assistant.md) — Ollama + Open WebUI
 
 > **Rebuilding after a reflash?** → [`bootstrap/docs/post-reflash.md`](bootstrap/docs/post-reflash.md)
 
@@ -77,7 +78,12 @@ raspi-k3s-cluster/
 │       └── values.yaml
 │
 ├── workloads/                          # User applications (managed by ArgoCD)
-│   └── (future applications)
+│   └── monday/                         # Monday AI assistant (Ollama + Open WebUI)
+│       ├── namespace.yaml
+│       ├── ollama.yaml                 # Ollama LLM backend + PVC
+│       ├── open-webui.yaml             # Open WebUI chat interface + PVC
+│       ├── ingress.yaml                # Traefik ingress → monday.cluster.local
+│       └── kustomization.yaml
 │
 ├── helmfile.yaml                       # Helm release definitions
 ├── local_ci.sh                         # Local manifest validation

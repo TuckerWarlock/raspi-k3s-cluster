@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: monday
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: pi4controller
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        ports:
+        - name: api
+          containerPort: 11434
+        env:
+        - name: OLLAMA_HOST
+          value: "0.0.0.0"
+        # Keep loaded model in memory between requests.
+        # Set to 0 to unload immediately and free RAM when idle.
+        - name: OLLAMA_KEEP_ALIVE
+          value: "5m"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          # Burst headroom for model loading — gemma3:1b peaks ~1.2Gi on load
+          limits:
+            cpu: "2"
+            memory: 2Gi
+        volumeMounts:
+        - name: models
+          mountPath: /root/.ollama
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 11434
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 11434
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: models
+        persistentVolumeClaim:
+          claimName: ollama-models
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+  namespace: monday
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      # Enough for 2-3 small models (gemma3:1b ~800Mi, llama3.2:1b ~1.3Gi)
+      storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: monday
+spec:
+  selector:
+    app: ollama
+  type: ClusterIP
+  ports:
+  - port: 11434
+    targetPort: 11434
+    name: api

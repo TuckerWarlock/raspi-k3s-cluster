@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monday
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
+    path: workloads/monday
+    targetRevision: main
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monday
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
