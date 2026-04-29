@@ -105,8 +105,8 @@ raspi-k3s-cluster/
 - [Traefik](https://traefik.io/) — ingress controller
 - [Longhorn](https://longhorn.io/) — distributed block storage
 - [ArgoCD](https://argoproj.github.io/cd/) — GitOps continuous deployment
-- [Ollama](https://ollama.com/) — local LLM inference (Friday AI assistant)
-- [Open WebUI](https://openwebui.com/) — chat interface for Friday
+- [Ollama](https://ollama.com/) — local LLM inference (Monday AI assistant)
+- [Open WebUI](https://openwebui.com/) — chat interface for Monday
 
 ### Validation & CI
 - [kubeconform](https://github.com/yannh/kubeconform) — Kubernetes manifest schema validation

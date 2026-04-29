@@ -1,6 +1,6 @@
 # cluster/monitoring/
 
-Monitoring stack — currently not deployed to conserve memory on pi4controller for AI inference workloads (Friday/Ollama).
+Monitoring stack — currently not deployed to conserve memory on pi4controller for AI inference workloads (Monday/Ollama).
 
 The `namespace.yaml` is retained so the namespace can be recreated if monitoring is re-enabled in the future.
 
