@@ -22,8 +22,7 @@ Complete setup guides are in [bootstrap/docs/](bootstrap/docs/):
 4. [MetalLB load balancer](bootstrap/docs/04-metallb-load-balancer.md)
 5. [Traefik ingress controller](bootstrap/docs/05-traefik-ingress.md)
 6. [Longhorn distributed storage](bootstrap/docs/06-longhorn-storage.md)
-7. [Prometheus monitoring](bootstrap/docs/08-prometheus-grafana-monitoring.md)
-8. ArgoCD GitOps — deployed via `helmfile sync`
+7. ArgoCD GitOps — deployed via `helmfile sync`
 
 > **Rebuilding after a reflash?** → [`bootstrap/docs/post-reflash.md`](bootstrap/docs/post-reflash.md)
 
@@ -106,7 +105,8 @@ raspi-k3s-cluster/
 - [Traefik](https://traefik.io/) — ingress controller
 - [Longhorn](https://longhorn.io/) — distributed block storage
 - [ArgoCD](https://argoproj.github.io/cd/) — GitOps continuous deployment
-- [Prometheus](https://prometheus.io/) — metrics collection
+- [Ollama](https://ollama.com/) — local LLM inference (Friday AI assistant)
+- [Open WebUI](https://openwebui.com/) — chat interface for Friday
 
 ### Validation & CI
 - [kubeconform](https://github.com/yannh/kubeconform) — Kubernetes manifest schema validation

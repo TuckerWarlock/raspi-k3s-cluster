@@ -1,55 +1,11 @@
 # cluster/monitoring/
 
-Lightweight Prometheus monitoring stack.
+Monitoring stack — currently not deployed to conserve memory on pi4controller for AI inference workloads (Friday/Ollama).
 
-See [cluster/argocd/addons/docs/prometheus.md](../argocd/addons/docs/prometheus.md) for complete setup instructions.
+The `namespace.yaml` is retained so the namespace can be recreated if monitoring is re-enabled in the future.
 
-## Structure
+## Re-enabling Monitoring
 
-```
-monitoring/
-├── namespace.yaml    # Shared monitoring namespace
-├── prometheus/       # Prometheus StatefulSet
-│   ├── kustomization.yaml
-│   ├── namespace.yaml
-│   ├── prometheus-rbac.yaml
-│   ├── prometheus-config.yaml
-│   └── prometheus-statefulset.yaml
-└── README.md
-```
-
-## Deployment
-
-Managed by ArgoCD Applications:
-- `cluster/argocd/addons/prometheus.yaml` → deploys prometheus/ via Kustomization
-
-Manual deployment:
-```bash
-kubectl apply -k cluster/monitoring/prometheus/
-```
-
-Verify:
-```bash
-kubectl -n monitoring get pods -w
-kubectl -n monitoring get svc
-kubectl -n monitoring get ingress
-```
-
-Access:
-- **Prometheus**: http://prometheus.cluster.local
-
-## Resource Usage
-
-| Component | CPU | Memory |
-|-----------|-----|--------|
-| Prometheus | 50m | 64Mi |
-
-## Architecture
-
-- **Prometheus StatefulSet** — minimal, no operator overhead
-- **7-day data retention** — tunable via ConfigMap
-- **30-second scrape interval** — essential metrics only
-- **Node pinning** — runs only on pi4controller
-- **Longhorn storage** — 3GB for Prometheus
+To bring back Prometheus + Loki + Promtail, restore the ArgoCD Application manifests in `cluster/argocd/addons/` and the corresponding manifests in `cluster/monitoring/prometheus/`, `loki/`, and `promtail/` from git history.
 
 See [architecture.md](../../bootstrap/docs/architecture.md) for design decisions.

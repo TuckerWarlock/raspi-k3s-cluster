@@ -1,10 +1,9 @@
 # cluster/argocd/addons/docs/
 
-Documentation for monitoring addon services deployed by ArgoCD.
+Documentation for addon services deployed by ArgoCD.
 
-## Services
-
-- **[prometheus.md](prometheus.md)** — Prometheus metrics collection
+Currently no active monitoring addons — Prometheus, Loki, Promtail, and Grafana were removed to free memory on pi4controller for AI inference workloads.
 
 For MetalLB, Traefik, Longhorn, and ArgoCD setup see the bootstrap guides in
 [bootstrap/docs/](../../../../bootstrap/docs/).
+

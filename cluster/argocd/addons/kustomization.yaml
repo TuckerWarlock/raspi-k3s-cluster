@@ -9,7 +9,3 @@ resources:
   - longhorn.yaml
   # ArgoCD own config (ingress, etc.) — managed by ArgoCD
   - argocd-config.yaml
-  # Monitoring stack
-  - prometheus.yaml
-  - loki.yaml
-  - promtail.yaml
