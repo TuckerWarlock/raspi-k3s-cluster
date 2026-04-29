@@ -15,6 +15,8 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/hostname: pi4controller
+      imagePullSecrets:
+      - name: dockerhub
       containers:
       - name: ollama
         image: ollama/ollama:latest
