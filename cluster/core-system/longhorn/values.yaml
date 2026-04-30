@@ -1,12 +1,27 @@
-# Pin Longhorn to the controller — Pi Zeros don't have enough RAM for storage replicas
-nodeSelector:
-  kubernetes.io/hostname: pi4controller
+# Pin all Longhorn components to pi4controller.
+# Pi Zeros have 512MB RAM and don't serve any Longhorn volumes — keeping
+# longhorn-manager, engine-image, and instance-manager off them eliminates
+# the main source of worker instability.
+longhornManager:
+  nodeSelector:
+    kubernetes.io/hostname: pi4controller
+
+longhornDriver:
+  nodeSelector:
+    kubernetes.io/hostname: pi4controller
+
+longhornUI:
+  nodeSelector:
+    kubernetes.io/hostname: pi4controller
 
 defaultSettings:
   # Single replica is appropriate for this small cluster
   defaultReplicaCount: 1
   # Reserve 12% of controller CPU for each instance-manager pod (Longhorn default)
   guaranteedInstanceManagerCPU: 12
+  # Pin system-managed components (engine-image, instance-manager) to the controller too.
+  # Format: comma-separated key:value pairs.
+  systemManagedComponentsNodeSelector: "kubernetes.io/hostname:pi4controller"
 
 # Reduce CSI sidecars from 2 to 1 — single replica is sufficient for a single-node storage backend
 csi:
