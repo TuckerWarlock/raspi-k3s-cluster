@@ -6,6 +6,8 @@
 #   helm show values argo/argo-cd --version 7.8.1
 
 server:
+  nodeSelector:
+    kubernetes.io/hostname: pi4controller
   service:
     type: ClusterIP
   resources:
@@ -32,6 +34,8 @@ dex:
 
 redis:
   enabled: true
+  nodeSelector:
+    kubernetes.io/hostname: pi4controller
   resources:
     requests:
       cpu: 10m
@@ -41,6 +45,8 @@ redis:
       memory: 128Mi
 
 repoServer:
+  nodeSelector:
+    kubernetes.io/hostname: pi4controller
   resources:
     requests:
       cpu: 50m
@@ -70,6 +76,8 @@ applicationSet:
   replicas: 0
 
 controller:
+  nodeSelector:
+    kubernetes.io/hostname: pi4controller
   resources:
     requests:
       cpu: 100m
