@@ -52,6 +52,40 @@ re-run each time.
 sudo bash bootstrap/scripts/install-k3s-server.sh
 ```
 
+### 1.5 — Re-mount the USB drive
+
+The 32 GB USB flash drive holds both the Longhorn volume data and the K3s containerd
+image cache. It survives a reflash but the fstab entries and systemd drop-in must be
+recreated.
+
+```bash
+# Verify the drive is detected
+lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,LABEL
+# Expected: sda1 with label "longhorn-data"
+
+# Re-add fstab entries (both the USB mount and the containerd bind mount)
+sudo mkdir -p /var/lib/longhorn
+echo "UUID=$(sudo blkid -s UUID -o value /dev/sda1)  /var/lib/longhorn  ext4  defaults,nofail  0  2" | sudo tee -a /etc/fstab
+echo '/var/lib/longhorn/k3s-containerd  /var/lib/rancher/k3s/agent/containerd  none  bind,nofail  0  0' | sudo tee -a /etc/fstab
+
+# Re-create the systemd drop-in so k3s waits for the bind mount
+sudo mkdir -p /etc/systemd/system/k3s.service.d
+sudo tee /etc/systemd/system/k3s.service.d/usb-containerd.conf << 'EOF'
+[Unit]
+After=var-lib-rancher-k3s-agent-containerd.mount
+Requires=var-lib-rancher-k3s-agent-containerd.mount
+EOF
+
+sudo systemctl daemon-reload && sudo mount -a
+
+# Verify both mounts are active
+df -h /var/lib/longhorn /var/lib/rancher/k3s/agent/containerd
+# Both should show the USB filesystem (sda1, ~29 GB total)
+```
+
+> If `mount -a` fails with "special device not found", the USB drive is not plugged in.
+> K3s will refuse to start (by design) until the drive is attached and mounted.
+
 Installs K3s with kubelet eviction thresholds, system-reserved memory, and the correct
 flags to disable the built-in load balancer (required for MetalLB).
 

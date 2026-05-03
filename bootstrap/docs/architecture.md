@@ -13,7 +13,7 @@ Reference these:
 
 | Node | Device | Role | RAM | Storage |
 |------|--------|------|-----|---------|
-| `controller` | Raspberry Pi 4 | K3s control plane + system workloads | 4GB | SD card |
+| `controller` | Raspberry Pi 4 | K3s control plane + system workloads | 4GB | 29 GB SD card + 32 GB USB flash drive |
 | `p1` | Raspberry Pi Zero 2 W | K3s worker | 512MB | SD card |
 | `p2` | Raspberry Pi Zero 2 W | K3s worker | 512MB | SD card |
 | `p3` | Raspberry Pi Zero 2 W | K3s worker | 512MB | SD card |
