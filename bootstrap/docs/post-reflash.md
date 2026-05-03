@@ -272,6 +272,30 @@ kubectl patch daemonset longhorn-manager -n longhorn-system --type=strategic \
                     "limits":{"cpu":"250m","memory":"256Mi"}}}]}}}}'
 ```
 
+### 3.6 — Create the TLS secret for `*.cluster.local`
+
+Traefik uses a mkcert wildcard certificate so browsers trust all `*.cluster.local` sites
+without warnings. The cert lives as a Kubernetes secret — it is **not in git**.
+
+On your laptop (once per laptop — installs the local CA):
+```bash
+brew install mkcert nss
+mkcert -install           # installs CA into macOS + Firefox trust stores
+```
+
+Generate the cert and push it to the cluster:
+```bash
+mkcert "*.cluster.local"
+kubectl create secret tls cluster-local-tls \
+  --cert=_wildcard.cluster.local.pem \
+  --key=_wildcard.cluster.local-key.pem \
+  -n traefik
+```
+
+> The `tlsStore.default` in `cluster/core-system/traefik/values.yaml` references this secret.
+> ArgoCD will configure Traefik to use it automatically. If the secret doesn't exist yet,
+> Traefik will fall back to its built-in self-signed cert until you create it.
+
 ### 3.4 — Update /etc/hosts on your laptop (if needed)
 
 If the Traefik IP has changed or this is a fresh laptop:

@@ -1,2 +1,5 @@
 # Local CI work directory (charts, rendered manifests, binaries)
 tmp/
+
+# mkcert certificates — private key must never be committed
+*.pem

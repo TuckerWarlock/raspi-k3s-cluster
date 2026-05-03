@@ -32,3 +32,16 @@ ports:
   websecure:
     port: 8443
     exposedPort: 443
+
+# Use the mkcert wildcard cert as the default TLS certificate for all *.cluster.local routes.
+# The secret must exist in the traefik namespace before ArgoCD syncs this.
+# To create it (run once, and again after any reflash):
+#   mkcert "*.cluster.local"
+#   kubectl create secret tls cluster-local-tls \
+#     --cert=_wildcard.cluster.local.pem \
+#     --key=_wildcard.cluster.local-key.pem \
+#     -n traefik
+tlsStore:
+  default:
+    defaultCertificate:
+      secretName: cluster-local-tls
