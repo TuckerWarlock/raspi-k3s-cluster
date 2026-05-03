@@ -58,22 +58,12 @@ spec:
           timeoutSeconds: 5
       volumes:
       - name: models
-        persistentVolumeClaim:
-          claimName: ollama-models
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: ollama-models
-  namespace: monday
-spec:
-  accessModes: ["ReadWriteOnce"]
-  storageClassName: longhorn
-  resources:
-    requests:
-      # Enough for 2-3 small models (gemma3:1b ~800Mi, llama3.2:1b ~1.3Gi)
-      storage: 10Gi
+        # Models are pre-pulled to USB drive on pi4controller via:
+        #   sudo OLLAMA_MODELS=/var/lib/longhorn/ollama-models ollama pull <model>
+        # Using hostPath avoids IPv6-only DNS in-cluster which blocks registry.ollama.ai
+        hostPath:
+          path: /var/lib/longhorn/ollama-models
+          type: DirectoryOrCreate
 
 ---
 apiVersion: v1
