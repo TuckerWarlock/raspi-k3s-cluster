@@ -40,13 +40,15 @@ spec:
         # On first boot, open-webui downloads ~30 files from HuggingFace before
         # the web server starts. startupProbe allows up to 5 minutes for this;
         # once it passes, the tighter liveness/readiness probes take over.
+        # timeoutSeconds:30 — the / endpoint is slow to respond during initial DB
+        # migrations and model loading even after port 8080 is open.
         startupProbe:
           httpGet:
             path: /
             port: 8080
           failureThreshold: 30
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 30
         livenessProbe:
           httpGet:
             path: /
