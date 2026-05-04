@@ -26,10 +26,14 @@ spec:
         env:
         - name: OLLAMA_HOST
           value: "0.0.0.0"
-        # Keep loaded model in memory between requests.
-        # Set to 0 to unload immediately and free RAM when idle.
+        # Keep model loaded in memory indefinitely — first load from USB is slow
+        # (~2+ min) so we never unload it. Pi 4 has 4GB RAM; gemma3:1b uses ~1.2GB.
         - name: OLLAMA_KEEP_ALIVE
-          value: "5m"
+          value: "-1"
+        # Limit to 1 parallel request — Pi 4 has no GPU, concurrent inference
+        # causes CPU saturation and makes the k3s API unresponsive.
+        - name: OLLAMA_NUM_PARALLEL
+          value: "1"
         resources:
           requests:
             cpu: 100m

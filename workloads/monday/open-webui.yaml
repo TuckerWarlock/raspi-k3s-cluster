@@ -27,6 +27,12 @@ spec:
         # Disable sign-up — single-user personal assistant
         - name: WEBUI_AUTH
           value: "false"
+        # Ollama on Pi 4 takes 2+ min to load model from USB on first request.
+        # Set a long timeout so open-webui doesn't cancel before model is ready.
+        - name: AIOHTTP_CLIENT_TIMEOUT
+          value: "300"
+        - name: AIOHTTP_CLIENT_TIMEOUT_TOOL_CALL
+          value: "300"
         resources:
           requests:
             cpu: 50m
