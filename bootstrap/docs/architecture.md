@@ -14,10 +14,10 @@ Reference these:
 | Node | Device | Role | RAM | Storage |
 |------|--------|------|-----|---------|
 | `controller` | Raspberry Pi 4 | K3s control plane + system workloads | 4GB | 29 GB SD card + 32 GB USB flash drive |
-| `p1` | Raspberry Pi Zero 2 W | K3s worker | 512MB | SD card |
-| `p2` | Raspberry Pi Zero 2 W | K3s worker | 512MB | SD card |
-| `p3` | Raspberry Pi Zero 2 W | K3s worker | 512MB | SD card |
-| `p4` | Raspberry Pi Zero 2 W | K3s worker | 512MB | SD card |
+| `p1` | Raspberry Pi Zero 2 W | K3s worker | 512MB | 32 GB SD card (~28 GB usable) |
+| `p2` | Raspberry Pi Zero 2 W | K3s worker | 512MB | 32 GB SD card (~28 GB usable) |
+| `p3` | Raspberry Pi Zero 2 W | K3s worker | 512MB | 32 GB SD card (~28 GB usable) |
+| `p4` | Raspberry Pi Zero 2 W | K3s worker | 512MB | 32 GB SD card (~28 GB usable) |
 
 The Pi Zeros are attached via a [ClusterHAT v2](https://clusterctrl.com/) on the Pi 4.
 Power and USB connectivity to all four nodes is managed by the HAT.
@@ -78,9 +78,8 @@ Chosen over full kubeadm because:
 
 | Component | Purpose | Runs on |
 |-----------|---------|---------|
-| **ArgoCD** | GitOps control plane — App of Apps pattern | Pi 4 (controller) |
-| **MetalLB** | Bare-metal LoadBalancer via Layer 2 ARP | Pi 4 (controller) |
-| **cert-manager** | TLS certificate management (self-signed + Let's Encrypt) | Pi 4 (controller) |
+| **ArgoCD** | GitOps control plane — App of Apps pattern | controller (app-controller) + workers (server, redis, repo-server) |
+| **MetalLB** | Bare-metal LoadBalancer via Layer 2 ARP | Pi 4 (controller only — Pi Zeros have no LAN interface) |
 | **SOPS + age** | Secret encryption for GitOps — secrets committed encrypted to git | N/A (client tooling) |
 
 ### Optional / Phase 2
@@ -89,7 +88,7 @@ Chosen over full kubeadm because:
 |-----------|---------|-------|
 | **Cilium + Hubble** | eBPF CNI + network observability | Replaces Flannel; install K3s with `--flannel-backend=none` |
 | **Headlamp** | Lightweight Kubernetes web UI | Surfaces metrics-server data |
-| **Longhorn** | Distributed block storage | Heavy; only viable with fast storage on nodes |
+| **cert-manager** | TLS certificate management (Let's Encrypt) | Deferred — self-signed mkcert wildcard cert works fine for homelab |
 
 ---
 
@@ -109,26 +108,42 @@ procedure, and post-reflash restore steps.
 
 ## Workload Placement
 
-Pi Zero nodes have 512MB RAM each. All cluster infrastructure and system workloads
-run on the Pi 4 controller. Pi Zeros are reserved for application workloads.
+Pi Zero nodes have 512MB RAM each. System workloads that require the LAN interface or
+exceed 512MB stay on the Pi 4 controller. Lighter system components and all application
+workloads schedule across the Pi Zero workers.
 
-### Pi 4 Controller — system workloads only
+### Pi 4 Controller — heavy / LAN-dependent workloads
 
-- K3s control plane (API server, scheduler, controller-manager, etcd)
-- ArgoCD
-- MetalLB
-- Traefik
-- cert-manager
-- metrics-server
+| Workload | Reason pinned to controller |
+|----------|-----------------------------|
+| K3s control plane | Must run on server node |
+| MetalLB | L2 ARP advertisement requires LAN (eth0) — Pi Zeros have no LAN |
+| Traefik | LoadBalancer Service type requires MetalLB, which needs eth0 |
+| ArgoCD application-controller | 512Mi memory limit = entire Pi Zero RAM budget |
+| Ollama | hostPath mount at `/var/lib/longhorn/ollama-models` on USB drive |
+| Open WebUI | 1536Mi memory limit — too heavy for Pi Zero |
+| Prometheus | High cardinality scrape; remote-write persistence |
 
-All system components use `nodeSelector` or `tolerations` to stay on the controller:
-
+All controller-pinned workloads use:
 ```yaml
 nodeSelector:
-  node-role.kubernetes.io/master: "true"
+  kubernetes.io/hostname: pi4controller
 ```
 
-### Pi Zero Nodes (p1–p4) — application workloads
+### Pi Zero Nodes (p1–p4) — lightweight system + application workloads
+
+| Workload | Notes |
+|----------|-------|
+| ArgoCD server | API + UI server; ~80Mi idle |
+| ArgoCD redis | Session cache; ~15Mi idle |
+| ArgoCD repo-server | Git repo fetch + manifest rendering; ~60Mi idle |
+| Application workloads | Schedule freely across workers |
+
+Workers use:
+```yaml
+nodeSelector:
+  node-role.kubernetes.io/worker: "worker"
+```
 
 Nodes are labeled and optionally tainted to control scheduling.
 

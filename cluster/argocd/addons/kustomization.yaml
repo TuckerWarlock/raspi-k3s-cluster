@@ -6,7 +6,6 @@ resources:
   - metallb.yaml
   - metallb-config.yaml
   - traefik.yaml
-  - longhorn.yaml
   # ArgoCD own config (ingress, etc.) — managed by ArgoCD
   - argocd-config.yaml
   # User workloads root app — manages cluster/argocd/workloads/

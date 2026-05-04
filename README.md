@@ -21,7 +21,7 @@ Complete setup guides are in [bootstrap/docs/](bootstrap/docs/):
 3. [K3s agents on Pi Zeros](bootstrap/docs/03-k3s-agents.md) — worker setup
 4. [MetalLB load balancer](bootstrap/docs/04-metallb-load-balancer.md)
 5. [Traefik ingress controller](bootstrap/docs/05-traefik-ingress.md)
-6. [Longhorn distributed storage](bootstrap/docs/06-longhorn-storage.md)
+6. [Longhorn distributed storage](bootstrap/docs/06-longhorn.md) *(removed — using local-path-provisioner)*
 7. ArgoCD GitOps — deployed via `helmfile sync`
 8. [Monday AI assistant](bootstrap/docs/10-monday-ai-assistant.md) — Ollama + Open WebUI
 
@@ -38,13 +38,12 @@ raspi-k3s-cluster/
 ├── bootstrap/                           # One-time setup (manual, hands-off after)
 │   ├── scripts/                         # Installation scripts
 │   │   ├── README.md                   # Script reference
-│   │   ├── install-helm.sh             # Helm, Helmfile, open-iscsi
+│   │   ├── install-helm.sh             # Helm, Helmfile
 │   │   ├── install-k3s-agent.sh        # K3s agent on workers
 │   │   ├── install-k3s-server.sh       # K3s control plane
 │   │   ├── set-static-ip.sh            # Static IP setup
 │   │   ├── setup-agents.sh             # Pi Zero agent setup
 │   │   ├── setup-controller.sh         # Pi 4 controller setup
-│   │   ├── cleanup-longhorn.sh         # Longhorn cleanup utility
 │   │   └── uninstall-k3s.sh            # K3s teardown
 │   └── docs/                            # Setup guides & architecture
 │       ├── 01-clusterhat-setup.md      # ClusterHAT hardware & OS
@@ -52,8 +51,9 @@ raspi-k3s-cluster/
 │       ├── 03-k3s-agents.md            # K3s worker setup
 │       ├── 04-metallb-load-balancer.md # MetalLB load balancer
 │       ├── 05-traefik-ingress.md       # Traefik ingress controller
-│       ├── 06-longhorn-storage.md      # Longhorn distributed storage
+│       ├── 06-longhorn.md              # Longhorn — removed, see note in file
 │       ├── 08-prometheus-grafana-monitoring.md # Monitoring stack
+│       ├── 10-monday-ai-assistant.md   # Monday AI assistant (Ollama + Open WebUI)
 │       └── architecture.md             # Architecture & decisions
 │
 ├── cluster/                             # Kubernetes manifests (managed by ArgoCD)
@@ -62,12 +62,9 @@ raspi-k3s-cluster/
 │   │   │   ├── ipaddresspool.yaml      # IP pool
 │   │   │   ├── l2advertisement.yaml    # L2 advertisement
 │   │   │   └── values.yaml             # Helm values
-│   │   ├── traefik/                    # Ingress controller
-│   │   │   ├── values.yaml             # Helm values
-│   │   │   └── traefik-test-ingress.yaml # Test ingress
-│   │   └── longhorn/                   # Distributed storage
+│   │   └── traefik/                    # Ingress controller
 │   │       ├── values.yaml             # Helm values
-│   │       └── test-pvc.yaml           # Test PVC
+│   │       └── traefik-test-ingress.yaml # Test ingress
 │   ├── monitoring/                     # Monitoring (Prometheus via Kustomize)
 │   │   ├── namespace.yaml
 │   │   └── prometheus/                 # Prometheus StatefulSet + config
@@ -109,7 +106,6 @@ raspi-k3s-cluster/
 ### Cluster Components
 - [MetalLB](https://metallb.universe.tf/) — bare-metal load balancer
 - [Traefik](https://traefik.io/) — ingress controller
-- [Longhorn](https://longhorn.io/) — distributed block storage
 - [ArgoCD](https://argoproj.github.io/cd/) — GitOps continuous deployment
 - [Ollama](https://ollama.com/) — local LLM inference (Monday AI assistant)
 - [Open WebUI](https://openwebui.com/) — chat interface for Monday

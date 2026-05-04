@@ -1,5 +1,18 @@
 # 06 — Longhorn (Distributed Block Storage)
 
+> **⚠️ REMOVED** — Longhorn was installed but subsequently removed from this cluster.
+> It consumed ~310MB RAM across 10 pods to manage a single 2Gi PVC, which was not worth
+> the overhead on a 4GB controller. The cluster now uses K3s's built-in
+> `local-path-provisioner` for all PVC needs. See `bootstrap/docs/architecture.md` for
+> the current storage configuration and `bootstrap/docs/post-reflash.md` step 3.1 for
+> the local-path-provisioner setup procedure.
+
+---
+
+*Historical documentation preserved below for reference.*
+
+---
+
 Longhorn provides replicated `PersistentVolume` storage across cluster nodes. On this
 cluster it runs entirely on `pi4controller` — the Pi Zeros don't have sufficient RAM or disk
 to participate in storage replication.

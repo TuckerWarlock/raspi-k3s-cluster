@@ -7,7 +7,7 @@
 
 server:
   nodeSelector:
-    kubernetes.io/hostname: pi4controller
+    node-role.kubernetes.io/worker: worker
   service:
     type: ClusterIP
   resources:
@@ -35,7 +35,7 @@ dex:
 redis:
   enabled: true
   nodeSelector:
-    kubernetes.io/hostname: pi4controller
+    node-role.kubernetes.io/worker: worker
   resources:
     requests:
       cpu: 10m
@@ -46,7 +46,7 @@ redis:
 
 repoServer:
   nodeSelector:
-    kubernetes.io/hostname: pi4controller
+    node-role.kubernetes.io/worker: worker
   resources:
     requests:
       cpu: 50m

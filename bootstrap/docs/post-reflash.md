@@ -54,14 +54,14 @@ sudo bash bootstrap/scripts/install-k3s-server.sh
 
 ### 1.5 — Re-mount the USB drive
 
-The 32 GB USB flash drive holds both the Longhorn volume data and the K3s containerd
-image cache. It survives a reflash but the fstab entries and systemd drop-in must be
-recreated.
+The 32 GB USB flash drive holds the K3s containerd image cache, local-path PVC data, and
+Ollama model files. It survives a reflash but the fstab entries and systemd drop-in must
+be recreated.
 
 ```bash
 # Verify the drive is detected
 lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,LABEL
-# Expected: sda1 with label "longhorn-data"
+# Expected: sda1 with label "longhorn-data" (legacy label, still valid)
 
 # Re-add fstab entries (both the USB mount and the containerd bind mount)
 sudo mkdir -p /var/lib/longhorn
@@ -194,14 +194,34 @@ kubectl label node p1 p2 p3 p4 hardware=pi-zero-2w
 
 ## Phase 3 — Bootstrap ArgoCD
 
-### 3.1 — Install open-iscsi on workers (required for Longhorn)
+### 3.1 — Configure local-path-provisioner to use USB on the controller
 
-Longhorn needs `iscsid` running on all nodes before it can attach volumes:
+K3s ships with `local-path-provisioner` (running in `kube-system`) as the default
+StorageClass. Out of the box it writes PVCs to `/opt/local-path-storage` on whichever
+node schedules the pod. For the pi4controller, we redirect PVC data to the USB drive to
+avoid filling the SD card.
 
 ```bash
-for i in 1 2 3 4; do
-  ssh warl0ck@p$i.local "sudo apt install -y open-iscsi && sudo systemctl enable --now iscsid"
-done
+# Create the storage directory on the USB drive
+sudo mkdir -p /var/lib/longhorn/local-path-storage
+
+# Patch the configmap to use USB on pi4controller, SD card on Pi Zeros (DEFAULT)
+kubectl get configmap local-path-config -n kube-system -o json | \
+  python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+cfg = json.loads(d['data']['config.json'])
+cfg['nodePathMap'] = [
+  {'node': 'pi4controller', 'paths': ['/var/lib/longhorn/local-path-storage']},
+  {'node': 'DEFAULT',       'paths': ['/opt/local-path-storage']}
+]
+d['data']['config.json'] = json.dumps(cfg)
+print(json.dumps(d))
+" | kubectl apply -f -
+
+# Verify
+kubectl get configmap local-path-config -n kube-system \
+  -o jsonpath='{.data.config\.json}' | python3 -m json.tool
 ```
 
 ### 3.2 — Run helmfile sync (ArgoCD only)
@@ -238,7 +258,6 @@ defined there. ArgoCD will now install (in roughly this order, automatically):
 | `metallb-config` | IPAddressPool + L2Advertisement | `metallb-system` |
 | `traefik` | Traefik ingress controller | `traefik` |
 | `argocd-config` | ArgoCD ingress (`argocd.cluster.local`) | `argocd` |
-| `longhorn` | Longhorn storage + CSI | `longhorn-system` |
 | `prometheus` | Prometheus + node-exporter | `monitoring` |
 | `loki` | Loki log aggregation | `monitoring` |
 | `promtail` | Promtail log shipping | `monitoring` |
@@ -260,19 +279,7 @@ kubectl get svc -n traefik
 # EXTERNAL-IP should show 192.168.1.241
 ```
 
-### 3.5 — Re-apply Longhorn manager resource limits (chart gap)
-
-The Longhorn Helm chart doesn't expose `longhornManager.resources`. Resource limits are applied
-once via kubectl and protected from ArgoCD drift via `ignoreDifferences`:
-
-```bash
-kubectl patch daemonset longhorn-manager -n longhorn-system --type=strategic \
-  -p '{"spec":{"template":{"spec":{"containers":[{"name":"longhorn-manager",
-       "resources":{"requests":{"cpu":"50m","memory":"128Mi"},
-                    "limits":{"cpu":"250m","memory":"256Mi"}}}]}}}}'
-```
-
-### 3.6 — Create the TLS secret for `*.cluster.local`
+### 3.5 — Create the TLS secret for `*.cluster.local`
 
 Traefik uses a mkcert wildcard certificate so browsers trust all `*.cluster.local` sites
 without warnings. The cert lives as a Kubernetes secret — it is **not in git**.
@@ -305,6 +312,7 @@ If the Traefik IP has changed or this is a fresh laptop:
 echo "192.168.1.241 argocd.cluster.local" | sudo tee -a /etc/hosts
 echo "192.168.1.241 prometheus.cluster.local" | sudo tee -a /etc/hosts
 echo "192.168.1.241 grafana.cluster.local" | sudo tee -a /etc/hosts
+echo "192.168.1.241 monday.cluster.local" | sudo tee -a /etc/hosts
 ```
 
 ---
