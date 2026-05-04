@@ -5,6 +5,11 @@
 # To find available chart values:
 #   helm show values argo/argo-cd --version 7.8.1
 
+# Clear any global nodeSelector from previous deploys so component-level
+# selectors below are the only ones applied (no merging with stale globals).
+global:
+  nodeSelector: {}
+
 server:
   nodeSelector:
     node-role.kubernetes.io/worker: worker
