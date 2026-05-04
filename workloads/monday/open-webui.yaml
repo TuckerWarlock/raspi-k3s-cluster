@@ -37,21 +37,32 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /app/backend/data
+        # On first boot, open-webui downloads ~30 files from HuggingFace before
+        # the web server starts. startupProbe allows up to 5 minutes for this;
+        # once it passes, the tighter liveness/readiness probes take over.
+        startupProbe:
+          httpGet:
+            path: /
+            port: 8080
+          failureThreshold: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
         livenessProbe:
           httpGet:
             path: /
             port: 8080
-          initialDelaySeconds: 60
+          initialDelaySeconds: 0
           periodSeconds: 30
           timeoutSeconds: 10
-          failureThreshold: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /
             port: 8080
-          initialDelaySeconds: 30
+          initialDelaySeconds: 0
           periodSeconds: 10
           timeoutSeconds: 5
+          failureThreshold: 3
       volumes:
       - name: data
         persistentVolumeClaim:
