@@ -22,6 +22,17 @@ server:
     limits:
       cpu: 100m
       memory: 256Mi
+  # Pi Zero 2W is slow to start the API server — default initialDelay (10s) kills
+  # the container before it binds to port 8080. Raise to 60s with a higher failure
+  # threshold so the probe doesn't fire until startup is complete.
+  readinessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 5
+  livenessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 5
 
 configs:
   params:
