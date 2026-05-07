@@ -44,6 +44,8 @@ configs:
   cm:
     # 5-minute reconciliation (default 3 min) — reduces reconcile churn on a memory-constrained node.
     timeout.reconciliation: 300s
+    # Enable apiKey capability so the admin account can generate API tokens.
+    accounts.admin: apiKey,login
 
 dex:
   enabled: false
