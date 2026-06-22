@@ -26,10 +26,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup helmfile
-        uses: helmfile/helmfile-action@v2.4.2
+        uses: helmfile/helmfile-action@v2.4.5
         with:
           helmfile-version: v1.4.2
           helmfile-args: version
@@ -41,7 +41,7 @@ jobs:
 
       - name: Setup kubeconform and kustomize
         if: ${{ inputs.validator == 'kubeconform' }}
-        uses: yokawasa/action-setup-kube-tools@v0.13.4
+        uses: yokawasa/action-setup-kube-tools@v0.13.5
         with:
           setup-tools: |
             kubeconform
