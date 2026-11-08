@@ -66,6 +66,7 @@ raspi-k3s-cluster/
 ├── workloads/                      # Applications (deployed by ArgoCD)
 │   └── gatus/                      # Status page → status.cluster.local
 │
+├── CLAUDE.md                       # Instructions for AI assistants (Copilot's file points here)
 ├── helmfile.yaml                   # Bootstraps ArgoCD only
 └── local_ci.sh                     # Runs the same checks as CI
 ```
