@@ -5,66 +5,37 @@ This repository provisions and documents a K3s Kubernetes cluster on a Raspberry
 ## Setup Progress
 
 ✅ **Completed:**
-- 01 — ClusterHAT hardware setup
-- 02 — K3s server (control plane)
-- 03 — K3s agents (p1–p4 workers)
-- 04 — MetalLB (load balancer)
-- 05 — Traefik ingress controller
-- 06 — Longhorn (distributed block storage)
-- 07 — ArgoCD (GitOps management)
-- 08 — Prometheus + Grafana (monitoring)
+- 01–05 — ClusterHAT, K3s server + agents, MetalLB, Traefik
+- 07 — ArgoCD (GitOps; root app-of-apps in `cluster/argocd/root-application.yaml`)
+- VictoriaMetrics (monitoring) + Gatus (status page)
 
-🔄 **In Progress:**
-- 09 — Loki + Promtail (logging)
-- 10 — Sample workload (GitOps validation)
-- 11 — Longhorn backup strategy
-- (12 — cert-manager + Let's Encrypt - deferred)
+🔄 **Planned:**
+- ntfy (mobile push notifications; Gatus + vmalert alert delivery)
+- WireGuard / Tailscale (remote access)
+
+❌ **Removed:** Longhorn (too heavy — using K3s local-path), Prometheus/Grafana/Loki (replaced by
+VictoriaMetrics), Monday/Ollama (LLM inference too slow on Pi 4 CPU).
 
 ## Repo Structure
 
 ```
 bootstrap/
   scripts/          # Setup scripts (run on Pi hardware)
-    install-*.sh   # K3s, Helm, Longhorn, ArgoCD installers
-  docs/             # Step-by-step setup guides (01-11)
+  docs/             # Step-by-step setup guides + post-reflash runbook
 cluster/
-  core-system/      # Core Kubernetes infrastructure
-    metallb/        # Load balancer (IPAddressPool + L2Advertisement)
-    traefik/        # Ingress controller (Helm values)
-    longhorn/       # Block storage (Helm values + test PVC)
-  argocd/           # GitOps management (Application CRD + Ingress)
-  monitoring/       # Prometheus + Grafana (TBD: step 08)
-  logging/          # Loki + Promtail (TBD: step 09)
-  workloads/        # User applications (TBD: step 10)
-README.md           # Project overview
+  core-system/      # Helm values/config: metallb/, traefik/
+  argocd/           # ArgoCD values, root app, addons/ (infra Applications), workloads/ (app Applications)
+  monitoring/       # VictoriaMetrics values
+workloads/          # User apps (raw manifests + kustomization), e.g. gatus/
+helmfile.yaml       # Bootstraps ArgoCD only; ArgoCD deploys everything else
 ```
 
-## Implementation Notes (Steps 08-11)
+## Storage
 
-**Step 08 — Prometheus + Grafana:**
-- Prometheus deployed on pi4controller with 15-day retention (Longhorn PVC)
-- Node-exporter DaemonSet on all nodes (lightweight metric collection)
-- Grafana dashboard on controller, persisted to Longhorn
-- Traefik Ingress: `prometheus.cluster.local`, `grafana.cluster.local`
-
-**Step 09 — Loki + Promtail:**
-- Loki (single-process mode) on controller, Longhorn chunk storage
-- Promtail agents on all nodes, logs → Loki
-- Access via Grafana datasource or standalone UI
-
-**Step 10 — Sample Workload:**
-- Deploy test app (e.g., nginx with PersistentVolume)
-- Verify ArgoCD auto-syncs from cluster/ folder
-- Proves full GitOps pipeline functional
-
-**Step 11 — Longhorn Backup:**
-- Configure backup targets (local or S3)
-- Set snapshot retention policies
-- Document restore procedures
-
-**Step 12 — Certificates (Deferred):**
-- Currently: self-signed certs via Traefik (working fine, Firefox shows warning)
-- Future: cert-manager + Let's Encrypt when external DNS available
+- K3s `local-path` StorageClass. On pi4controller, PVCs land on the USB drive at
+  `/mnt/usb/local-path-storage`; on Pi Zeros, on their SD cards.
+- The USB drive (`/mnt/usb`) also holds the containerd image store (bind mount) and nightly
+  K3s state backups (`/mnt/usb/backups/`).
 
 ## Network Layout
 

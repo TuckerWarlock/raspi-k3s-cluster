@@ -9,7 +9,6 @@ the cluster.
 - K3s server and agents running (steps 01–03)
 - MetalLB pool applied (step 04)
 - Traefik running with an external IP (step 05)
-- Longhorn running (step 06)
 - Laptop `/etc/hosts` updated with `argocd.cluster.local` pointing to the Traefik external IP
 
 ## Step 1 — Install ArgoCD via helmfile

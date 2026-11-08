@@ -5,7 +5,7 @@ Run these in sequence — each step depends on the previous one.
 
 > **Have a backup on the USB drive?** `setup-controller.sh` installs a nightly
 > `k3s-backup.timer` that saves the K3s datastore, token, and certs to
-> `/var/lib/longhorn/backups/k3s-YYYY-MM-DD/`. If one exists, follow
+> `/mnt/usb/backups/k3s-YYYY-MM-DD/`. If one exists, follow
 > [Phase 0](#phase-0--restore-k3s-state-from-backup) after step 1.5. The cluster then keeps
 > its old certs and token, so your laptop kubeconfig and the Pi Zero agents keep working.
 
@@ -19,8 +19,8 @@ Run these in sequence — each step depends on the previous one.
 Run this after K3s is installed (1.4) and the USB drive is mounted (1.5). Skip it on a first-ever build.
 
 ```bash
-ls -1d /var/lib/longhorn/backups/k3s-*        # pick the newest
-BACKUP=/var/lib/longhorn/backups/k3s-YYYY-MM-DD
+ls -1d /mnt/usb/backups/k3s-*        # pick the newest
+BACKUP=/mnt/usb/backups/k3s-YYYY-MM-DD
 
 sudo systemctl stop k3s
 sudo rm -f /var/lib/rancher/k3s/server/db/state.db*
@@ -36,7 +36,7 @@ kubectl get nodes          # old nodes + workloads reappear
 After a restore, skip 1.5 (kubeconfig refresh), Phase 2.4–2.5, and Phase 5: the token and
 CA are unchanged. Phase 3.1 (local-path config) and 3.5 (TLS secret) are also restored from the datastore.
 
-Test a backup by hand: `sudo systemctl start k3s-backup.service && ls /var/lib/longhorn/backups/`.
+Test a backup by hand: `sudo systemctl start k3s-backup.service && ls /mnt/usb/backups/`.
 
 ---
 
@@ -96,12 +96,13 @@ be recreated.
 ```bash
 # Verify the drive is detected
 lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,LABEL
-# Expected: sda1 with label "longhorn-data" (legacy label, still valid)
+# Expected: sda1 with label "usb-data" (older drives may still say "longhorn-data" — that's fine,
+# the mount uses the UUID; relabel with: sudo e2label /dev/sda1 usb-data)
 
 # Re-add fstab entries (both the USB mount and the containerd bind mount)
-sudo mkdir -p /var/lib/longhorn
-echo "UUID=$(sudo blkid -s UUID -o value /dev/sda1)  /var/lib/longhorn  ext4  defaults,nofail  0  2" | sudo tee -a /etc/fstab
-echo '/var/lib/longhorn/k3s-containerd  /var/lib/rancher/k3s/agent/containerd  none  bind,nofail  0  0' | sudo tee -a /etc/fstab
+sudo mkdir -p /mnt/usb
+echo "UUID=$(sudo blkid -s UUID -o value /dev/sda1)  /mnt/usb  ext4  defaults,nofail  0  2" | sudo tee -a /etc/fstab
+echo '/mnt/usb/k3s-containerd  /var/lib/rancher/k3s/agent/containerd  none  bind,nofail  0  0' | sudo tee -a /etc/fstab
 
 # Re-create the systemd drop-in so k3s waits for the bind mount
 sudo mkdir -p /etc/systemd/system/k3s.service.d
@@ -114,7 +115,7 @@ EOF
 sudo systemctl daemon-reload && sudo mount -a
 
 # Verify both mounts are active
-df -h /var/lib/longhorn /var/lib/rancher/k3s/agent/containerd
+df -h /mnt/usb /var/lib/rancher/k3s/agent/containerd
 # Both should show the USB filesystem (sda1, ~29 GB total)
 ```
 
@@ -238,7 +239,7 @@ avoid filling the SD card.
 
 ```bash
 # Create the storage directory on the USB drive
-sudo mkdir -p /var/lib/longhorn/local-path-storage
+sudo mkdir -p /mnt/usb/local-path-storage
 
 # Patch the configmap to use USB on pi4controller, SD card on Pi Zeros (DEFAULT)
 kubectl get configmap local-path-config -n kube-system -o json | \
@@ -247,7 +248,7 @@ import sys, json
 d = json.load(sys.stdin)
 cfg = json.loads(d['data']['config.json'])
 cfg['nodePathMap'] = [
-  {'node': 'pi4controller', 'paths': ['/var/lib/longhorn/local-path-storage']},
+  {'node': 'pi4controller', 'paths': ['/mnt/usb/local-path-storage']},
   {'node': 'DEFAULT',       'paths': ['/opt/local-path-storage']}
 ]
 d['data']['config.json'] = json.dumps(cfg)
