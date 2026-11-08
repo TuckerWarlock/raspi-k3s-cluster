@@ -28,3 +28,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # Traefik's CRDs are too large for client-side apply diffs — without this they stay
+      # OutOfSync forever and selfHeal re-syncs them on every reconcile.
+      - ServerSideApply=true
