@@ -92,49 +92,16 @@ clusterctrl led off
 
 ### Fan (ClusterHAT Case — e.g. PiHut case)
 
-The fan is controlled via GPIO 18. Before using `clusterctrl fan`, you must first configure GPIO 18 as an output. Add this to `/etc/rc.local` (before `exit 0`) so it persists across reboots:
+The fan is on GPIO 18, which must be set as an output before `clusterctrl fan` works.
+On Bookworm use `pinctrl` (`raspi-gpio` is deprecated):
 
 ```bash
-raspi-gpio set 18 op pn dh
+pinctrl set 18 op pn dh
+clusterctrl fan on     # or: clusterctrl fan off
 ```
 
-Then control the fan:
-
-```bash
-clusterctrl fan on
-clusterctrl fan off
-```
-
-#### Make Fan Setup Persistent
-
-```bash
-sudo nano /etc/rc.local
-```
-
-Add before `exit 0`:
-```bash
-raspi-gpio set 18 op pn dh
-```
-
-Or create a systemd service to be more explicit:
-
-```bash
-sudo tee /etc/systemd/system/clusterhat-fan.service > /dev/null <<EOF
-[Unit]
-Description=Enable ClusterHAT fan GPIO
-After=multi-user.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/raspi-gpio set 18 op pn dh
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl enable --now clusterhat-fan.service
-```
+`setup-controller.sh` installs `clusterhat-fan.service`, which runs both commands on every boot,
+so there's nothing to add to `/etc/rc.local`. Check it with `systemctl status clusterhat-fan`.
 
 ## ⚠️ Critical Hardware & Power Notes
 
@@ -190,8 +157,7 @@ The ClusterHAT's micro-USB power port **must be connected to a blue USB 3.0 port
 After the Pi 4 controller boots, run these to bring the cluster fully online:
 
 ```bash
-raspi-gpio set 18 op pn dh   # enable fan GPIO (if not in rc.local/systemd yet)
-clusterctrl fan on            # start the fan
+# Fan starts automatically via clusterhat-fan.service (setup-controller.sh)
 clusterctrl hub on            # enable the USB hub (required for node connectivity)
 
 # Power on nodes ONE AT A TIME with 30s delays — prevents boot power spikes

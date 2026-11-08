@@ -16,7 +16,7 @@ Run these in sequence — each step depends on the previous one.
 
 ## Phase 0 — Restore K3s state from backup
 
-Run this after K3s is installed (1.4) and the USB drive is mounted (1.5). Skip it on a first-ever build.
+Run this after the USB drive is mounted (1.4) and K3s is installed (1.5). Skip it on a first-ever build.
 
 ```bash
 ls -1d /mnt/usb/backups/k3s-*        # pick the newest
@@ -33,7 +33,7 @@ sudo systemctl start k3s
 kubectl get nodes          # old nodes + workloads reappear
 ```
 
-After a restore, skip 1.5 (kubeconfig refresh), Phase 2.4–2.5, and Phase 5: the token and
+After a restore, skip 1.6 (kubeconfig refresh), Phase 2.4–2.5, and Phase 5: the token and
 CA are unchanged. Phase 3.1 (local-path config) and 3.5 (TLS secret) are also restored from the datastore.
 
 Test a backup by hand: `sudo systemctl start k3s-backup.service && ls /mnt/usb/backups/`.
@@ -69,7 +69,7 @@ sudo reboot
 
 ### 1.3 — Run setup-controller.sh
 
-Clones the repo and configures the controller (swap, sysctl, ClusterHAT, nightly K3s backup timer):
+Clones the repo and configures the controller (swap, sysctl, ClusterHAT shutdown hook + fan, nightly K3s backup timer):
 
 ```bash
 git clone https://github.com/TuckerWarlock/raspi-k3s-cluster.git ~/raspi-k3s-cluster
@@ -81,17 +81,12 @@ This creates a 1GB swapfile and writes `/etc/sysctl.d/99-k3s-memory.conf`
 (swappiness=10, OOM panic disabled). These are lost on every reflash and **must** be
 re-run each time.
 
-### 1.4 — Install K3s server
-
-```bash
-sudo bash bootstrap/scripts/install-k3s-server.sh
-```
-
-### 1.5 — Re-mount the USB drive
+### 1.4 — Mount the USB drive (before installing K3s)
 
 The 32 GB USB flash drive holds the K3s containerd image cache, and local-path PVC data
 (plus the nightly K3s backups). It survives a reflash but the fstab entries and systemd drop-in must
-be recreated.
+be recreated. Do this **before** installing K3s: otherwise K3s writes its images to the SD card
+first, and the bind mount later hides them.
 
 ```bash
 # Verify the drive is detected
@@ -122,10 +117,37 @@ df -h /mnt/usb /var/lib/rancher/k3s/agent/containerd
 > If `mount -a` fails with "special device not found", the USB drive is not plugged in.
 > K3s will refuse to start (by design) until the drive is attached and mounted.
 
+#### Migrating a drive from the old `/var/lib/longhorn` layout
+
+Drives set up before Longhorn was removed were mounted at `/var/lib/longhorn` and may hold
+Longhorn and Monday leftovers. If K3s is already running, stop it first
+(`sudo systemctl stop k3s && sudo /usr/local/bin/k3s-killall.sh`), then:
+
+```bash
+sudo umount /var/lib/rancher/k3s/agent/containerd /var/lib/longhorn 2>/dev/null
+sudo sed -i 's|/var/lib/longhorn|/mnt/usb|g' /etc/fstab
+sudo mkdir -p /mnt/usb && sudo rmdir /var/lib/longhorn
+sudo e2label /dev/sda1 usb-data
+sudo systemctl daemon-reload && sudo mount -a
+
+sudo du -sh /mnt/usb/*
+sudo rm -rf /mnt/usb/{engine-binaries,replicas,unix-domain-socket,longhorn-disk.cfg,ollama-models}
+sudo systemctl start k3s
+```
+
+`k3s-containerd/` and `local-path-storage/` may also hold images and PVC data from the
+previous cluster. Clean them up once the new cluster is running (Phase 6).
+
+### 1.5 — Install K3s server
+
+```bash
+sudo bash bootstrap/scripts/install-k3s-server.sh
+```
+
 Installs K3s with kubelet eviction thresholds, system-reserved memory, and the correct
 flags to disable the built-in load balancer (required for MetalLB).
 
-### 1.5 — Refresh kubeconfig on your laptop
+### 1.6 — Refresh kubeconfig on your laptop
 
 K3s generates new TLS certificates on every install. Your old kubeconfig will fail with
 `x509: certificate signed by unknown authority`. Refresh it now:
@@ -411,6 +433,22 @@ kubectl top nodes
 
 # ArgoCD applications Synced + Healthy
 kubectl -n argocd get applications
+```
+
+### 6.1 — Clean up leftovers from the previous cluster (optional)
+
+After a reflash *without* a Phase 0 restore, the USB drive still holds the old cluster's
+images and PVC directories. Once every app is Synced + Healthy:
+
+```bash
+# Remove images no running container uses (old Ollama/Open WebUI images etc.)
+sudo k3s crictl rmi --prune
+
+# PVC directories with no matching PV belong to the old cluster
+kubectl get pv -o jsonpath='{range .items[*]}{.spec.hostPath.path}{.spec.local.path}{"\n"}{end}'
+sudo ls /mnt/usb/local-path-storage/
+# Delete only directories that are NOT in the kubectl output above:
+# sudo rm -rf /mnt/usb/local-path-storage/<old-pvc-dir>
 ```
 
 Refer to `bootstrap/docs/memory-management.md` for safe deployment procedures and

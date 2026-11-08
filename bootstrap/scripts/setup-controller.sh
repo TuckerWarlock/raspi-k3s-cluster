@@ -101,6 +101,28 @@ sudo systemctl enable clusterctrl-off.service
 echo "    clusterctrl-off.service enabled — nodes will auto power-off on reboot/shutdown."
 
 echo ""
+echo "==> Installing ClusterHAT fan service..."
+# The case fan is on GPIO 18, which must be set as an output before `clusterctrl fan on`
+# works. pinctrl replaces the deprecated raspi-gpio on Bookworm.
+sudo tee /etc/systemd/system/clusterhat-fan.service > /dev/null << 'EOF'
+[Unit]
+Description=Enable ClusterHAT case fan (GPIO 18)
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/pinctrl set 18 op pn dh
+ExecStart=/usr/sbin/clusterctrl fan on
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable --now clusterhat-fan.service
+echo "    clusterhat-fan.service enabled — fan starts on every boot."
+
+echo ""
 echo "==> Installing nightly K3s state backup to the USB drive..."
 # Power loss can corrupt the SD card. This copies the K3s datastore, token, and certs to
 # the USB drive every night so a reflash can restore the cluster instead of rebuilding it.
