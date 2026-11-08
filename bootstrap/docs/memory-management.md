@@ -1,8 +1,8 @@
 # Memory Management & OOM Prevention
 
-The Pi 4 controller runs everything — K3s control plane, Traefik,
-MetalLB, VictoriaMetrics, and Gatus (most ArgoCD components run on the Pi Zeros). There's
-little headroom on 4GB. This document explains how the cluster is protected from
+The Pi 4 controller runs the K3s control plane plus every pod that needs the LAN or the USB
+drive: Traefik, MetalLB, the ArgoCD application-controller, VictoriaMetrics, and Gatus. The
+rest of ArgoCD runs on the Pi Zeros. There's little headroom on 4GB. This document explains how the cluster is protected from
 memory-induced crashes and how to deploy new workloads safely.
 
 ---
@@ -77,43 +77,38 @@ Kubernetes scheduling decisions are based on **requests**, not limits. A pod wit
 than advertised. This causes over-scheduling — the scheduler places pods that collectively
 exceed available memory.
 
-All monitoring and ArgoCD components have been updated so requests reflect real steady-state usage:
+Requests should reflect real steady-state usage. Current settings and measured usage
+(`kubectl top pods -A`, idle, November 2026):
 
-| Component | Old request | New request | Limit |
-|-----------|-------------|-------------|-------|
-| Prometheus | 256Mi | 384Mi | 512Mi |
-| Loki | 64Mi | 128Mi | 256Mi |
-| Promtail (per node) | 32Mi | 32Mi | 64Mi |
-| ArgoCD controller | — (none) | 256Mi | 512Mi |
-| ArgoCD server | — (none) | 128Mi | 256Mi |
-| ArgoCD repo-server | — (none) | 128Mi | 256Mi |
-| ArgoCD redis | — (none) | 32Mi | 128Mi |
+| Component | Node | Request | Limit | Measured |
+|-----------|------|---------|-------|----------|
+| ArgoCD application-controller | pi4controller | 256Mi | 512Mi | ~160–250Mi (400Mi+ while retrying failed syncs) |
+| VictoriaMetrics | pi4controller | 128Mi | 256Mi | ~120Mi |
+| MetalLB speaker / controller | pi4controller | 64Mi / 32Mi | 128Mi / 128Mi | ~50Mi / ~30Mi |
+| Traefik | pi4controller | 64Mi | 128Mi | ~25Mi |
+| Gatus | pi4controller | 32Mi | 64Mi | ~10Mi |
+| ArgoCD server | Pi Zero | 128Mi | 256Mi | ~65–100Mi |
+| ArgoCD repo-server | Pi Zero | 128Mi | 384Mi | ~65–115Mi |
+| ArgoCD redis | Pi Zero | 32Mi | 128Mi | ~20Mi |
 
 ArgoCD `notifications` and `applicationSet` controllers are **disabled** — unused in
-this cluster. This saves ~46Mi of untracked memory.
-
-Grafana is **disabled** until the cluster has sufficient headroom. Re-enable by adding
-`grafana.yaml` back to `cluster/argocd/addons/kustomization.yaml` and then manually
-creating the ArgoCD Application.
+this cluster.
 
 ---
 
 ## Memory Budget (Pi 4 Controller)
 
-Approximate steady-state peak usage across all system components:
+Measured after the November 2026 rebuild, everything idle:
 
-| Category | Estimate |
-|----------|----------|
-| OS / kernel / systemd | ~200MB (reserved: 512MB) |
-| K3s control plane pods | ~500MB |
-| Traefik + MetalLB | ~100MB |
-| ArgoCD application-controller | ~256MB |
-| VictoriaMetrics | ~128–256MB |
-| Gatus | ~32–64MB |
-| **Total (approx)** | **~1.3GB** (estimate; replace with `kubectl top nodes` after the rebuild) |
+| Category | Usage |
+|----------|-------|
+| Pods on the controller (table above, plus CoreDNS, metrics-server, local-path) | ~460Mi |
+| K3s server process, containerd, OS | ~1.4Gi |
+| **Node total (`kubectl top nodes`)** | **~1.85–1.95Gi (62–66% of allocatable)** |
+| **Headroom before soft eviction (512Mi available)** | **~1.3Gi** |
 
-This leaves ~1.5GB before kubelet soft eviction starts. That's the budget for
-application workloads deployed on the controller, and for burst spikes.
+That headroom is the budget for new controller workloads and for burst spikes (image pulls,
+chart renders, pod restarts). The Pi Zeros idle at 210–250Mi each (45–55%).
 
 ---
 
@@ -123,21 +118,21 @@ Deploying multiple new workloads simultaneously is how the cluster crashed.
 ArgoCD syncs everything at once — a memory spike across 3–4 pods starting
 simultaneously can exceed available memory before steady state settles.
 
-**Always follow this sequence:**
+**Push one new app per commit**, and wait for each to settle before pushing the next:
 
 ```bash
-# 1. Check current memory before any deploy
+# 1. Baseline before the push
 kubectl top nodes
 
-# 2. Deploy one component at a time; wait for it to be Running and stable
-kubectl rollout status -n monitoring statefulset/prometheus
-kubectl top pod -n monitoring
+# 2. Push one app; pull it in now instead of waiting for the 5-minute poll
+kubectl -n argocd annotate app cluster-addons workloads argocd.argoproj.io/refresh=normal --overwrite
+kubectl -n argocd get applications -w          # wait for Synced + Healthy
 
-# 3. Only proceed to the next component once memory has settled
-kubectl top nodes  # should return to baseline ± ~50MB
+# 3. Check the new pod and the node
+kubectl top pod -n <namespace>
+kubectl top nodes   # back to baseline + the new pod's usage
 
-# 4. If deploying via ArgoCD, use manual sync (not auto-sync) during heavy rollouts:
-#    ArgoCD UI → App → Sync → select specific resources → sync one at a time
+# 4. Only then push the next app
 ```
 
 **Rule of thumb:** if `kubectl top nodes` shows the controller above 80% memory,
@@ -145,39 +140,31 @@ stop and investigate before deploying anything new.
 
 ---
 
-## Prometheus Alerts
+## Alerting
 
-Two alert rules watch for memory pressure (`cluster/monitoring/prometheus/prometheus-config.yaml`):
+Not set up yet. The old Prometheus memory alerts (node above 75% for 2m, under 400Mi
+available for 1m, container above 90% of its limit for 5m — rules in git history at
+`d8cf5eb^:cluster/monitoring/prometheus/prometheus-config.yaml`) are planned to come back
+via `vmalert`, with Gatus and vmalert both notifying through ntfy.
 
-| Alert | Threshold | Severity |
-|-------|-----------|----------|
-| `NodeMemoryPressureWarning` | >75% node memory used for 2m | warning |
-| `NodeMemoryPressureCritical` | <400Mi available for 1m | critical |
-| `ContainerNearMemoryLimit` | Container at >90% of its limit for 5m | warning |
-
-These appear in Grafana under Alerting, or can be queried in Prometheus at
-`http://prometheus.cluster.local`.
+Until then, check by hand: `kubectl top nodes`, or query VictoriaMetrics at
+`https://vm.cluster.local/vmui`.
 
 ---
 
 ## After a Reflash
 
-See **[`bootstrap/docs/post-reflash.md`](post-reflash.md)** for the complete, ordered
-runbook. Key memory-related steps to not forget:
+[rebuild.md](rebuild.md) covers everything. The memory-related steps that are easy to miss:
 
-- Re-run `setup-controller.sh` — swap and sysctl are lost on every reflash
-- Re-run `install-k3s-server.sh` — eviction flags are baked into this script
-- Apply MetalLB manifests manually after `helmfile sync` — they are not Helm-managed and
-  are not applied by ArgoCD; without them every `LoadBalancer` stays `<pending>` and all
-  browser access times out despite pods being `Running`
+- `setup-controller.sh` (step 1.3) — swap and sysctls are lost on every reflash
+- `install-k3s-server.sh` (step 1.6) — the eviction flags live in this script
+- The USB drive mount (step 1.5) — without it, images and PVCs fill the SD card
 
 ---
 
 ## Considerations for Future Growth
 
-- **K3s official SD card warning**: The K3s docs explicitly state *"SD cards and eMMC cannot handle the IO load"* for etcd write operations. We use K3s in single-server mode (SQLite, not etcd), which is far less write-intensive — but this is still a long-term reliability concern. An external USB SSD for the Pi 4's storage would significantly improve stability.
-- **Pi Zero 2 W is at the K3s minimum**: K3s requires 512MB RAM for agents; Pi Zeros have exactly 512MB. They are not candidates for any additional system workloads.
-- **Monitoring on a worker**: Prometheus could move to a worker node if the stack grows, but Pi Zero 2 W has only 512MB — not viable without a beefier worker node.
-- **Disable node-exporter on Pi Zeros**: Pi Zeros are already memory-constrained.
-  If promtail causes OOMKills on workers, remove the Pi Zero toleration from the
-  Promtail DaemonSet.
+- **SD card reliability**: The K3s docs state *"SD cards and eMMC cannot handle the IO load"* for etcd. This cluster uses single-server SQLite, which writes far less — but a USB SSD boot for the Pi 4 would still be the biggest stability win.
+- **Pi Zero 2 W is at the K3s minimum**: K3s requires 512MB RAM for agents; Pi Zeros have exactly 512MB. Keep anything scheduled on them small.
+- **VictoriaMetrics series count**: ~140k active series, mostly API server and etcd latency histograms (`apiserver_request_duration_seconds_bucket` alone is ~20k). If VictoriaMetrics nears its 256Mi limit, drop those with a `metric_relabel_configs` rule before raising the limit.
+- **node-exporter**: deliberately not deployed — cAdvisor via the kubelet covers container memory and CPU without a DaemonSet on the Pi Zeros.

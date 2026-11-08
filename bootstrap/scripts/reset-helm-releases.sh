@@ -57,4 +57,4 @@ rm -rf "$HOME/.cache/helm" "$HOME/.local/share/helm" "$HOME/.config/helm" || tru
 
 echo ""
 echo "==> Helm reset complete"
-echo "You can now re-bootstrap the cluster by rerunning the setup scripts and \`helmfile sync\` (see bootstrap/docs/07-reset-bootstrap.md)."
+echo "You can now re-bootstrap the cluster by rerunning the setup scripts and \`helmfile sync\` (see bootstrap/docs/rebuild.md)."

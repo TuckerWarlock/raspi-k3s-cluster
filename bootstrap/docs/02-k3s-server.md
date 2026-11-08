@@ -1,67 +1,47 @@
 # 02 — K3s Server (Pi 4 Control Plane)
 
-## Prerequisites
+> Reference guide. The ordered build steps (cgroups, install, kubeconfig) are in
+> [rebuild.md](rebuild.md#phase-1--pi-4-controller), steps 1.2, 1.6, and 1.7.
 
-Before installing K3s, cgroup memory must be enabled or the service will fail to start.
+## What `install-k3s-server.sh` configures
 
-```bash
-sudo nano /boot/firmware/cmdline.txt
-```
+| Flag | Why |
+|---|---|
+| `--write-kubeconfig-mode 644` | `kubectl` on the Pi works without `sudo` |
+| `--disable traefik` | Traefik is deployed by ArgoCD from its Helm chart instead ([05-traefik.md](05-traefik.md)) |
+| `--disable servicelb` | K3s's built-in load balancer (klipper) conflicts with MetalLB |
+| `--kubelet-arg=system-reserved=cpu=250m,memory=512Mi` | Keeps 512Mi for the OS, never allocatable to pods |
+| `--kubelet-arg=eviction-soft=memory.available<512Mi,…` | Gracefully evicts pods after 2 minutes of memory pressure |
+| `--kubelet-arg=eviction-hard=memory.available<300Mi,…` | Force-evicts before the kernel OOM killer can corrupt the SD card |
+| `--kubelet-arg=eviction-max-pod-grace-period=90` | Evicted pods get up to 90s to shut down |
 
-Append to the **end of the existing single line** (no new line):
-```
-cgroup_memory=1 cgroup_enable=memory
-```
+The eviction rationale (and why `eviction-hard` re-lists every default threshold) is in
+[memory-management.md](memory-management.md#layer-2--kubelet-eviction-thresholds).
 
-> **⚠️ cmdline.txt must remain a single line.** Do not press Enter or add any newlines.
-> A second line or trailing newline will prevent the Pi from booting.
-> Verify with `cat /boot/firmware/cmdline.txt | wc -l` — should output `1`.
+The script refuses to run unless `cgroup_memory=1 cgroup_enable=memory` is in
+`/boot/firmware/cmdline.txt`. That file must stay **a single line** — a second line stops
+the Pi from booting.
 
-Reboot, then SSH back in before continuing:
-```bash
-sudo reboot
-```
+K3s runs single-server with SQLite (not etcd), which is far less write-heavy on the SD card.
+The nightly `k3s-backup.timer` copies that SQLite datastore, the token, and the certs to the
+USB drive ([rebuild.md step 1.8](rebuild.md#18--optional-restore-k3s-state-from-backup)).
 
-## Install
+## Troubleshooting
 
-```bash
-cd ~/raspi-k3s-cluster
-sudo bash bootstrap/scripts/install-k3s-server.sh
-```
+**`x509: certificate signed by unknown authority` from your laptop**
 
-This script installs K3s with:
-- `--write-kubeconfig-mode 644` — kubeconfig readable without sudo
-- `--disable traefik` — install Traefik via Helm for full control
-- `--disable servicelb` — **Required** if using MetalLB (conflicts with klipper)
+K3s regenerated its certificates (every fresh install does). Refresh the kubeconfig —
+[rebuild.md step 1.7](rebuild.md#17--kubeconfig-on-your-laptop).
 
-## Verify
+**K3s won't start after a reboot**
+
+Usually the USB containerd bind mount is missing —
+[rebuild.md → K3s won't start after a reboot](rebuild.md#k3s-wont-start-after-a-reboot).
+Otherwise check the logs:
 
 ```bash
 sudo systemctl status k3s
-kubectl get nodes -o wide
+sudo journalctl -u k3s -n 100 --no-pager
 ```
 
-Expected: `pi4controller` in `Ready` state.
-
-## Retrieve Node Token
-
-Workers need this token to join the cluster:
-
-```bash
-sudo cat /var/lib/rancher/k3s/server/node-token
-```
-
-Save this — you'll need it for each Pi Zero agent install.
-
-## kubeconfig (access from laptop)
-
-K3s writes the kubeconfig to `/etc/rancher/k3s/k3s.yaml`. To use `kubectl` from your laptop:
-
-```bash
-scp warl0ck@pi4controller.local:/etc/rancher/k3s/k3s.yaml ~/.kube/config
-# Replace 127.0.0.1 with the Pi 4's LAN IP
-sed -i '' 's/127.0.0.1/192.168.1.10/g' ~/.kube/config  # macOS
-# sed -i 's/127.0.0.1/192.168.1.10/g' ~/.kube/config   # Linux
-```
-
-> **⚠️ After each K3s reinstall, re-run the above commands.** The TLS certificates are regenerated on each install, and your kubeconfig will have a stale certificate. You'll see errors like `x509: certificate signed by unknown authority` if you don't refresh it.
+**Node token** (needed by the agents): `sudo cat /var/lib/rancher/k3s/server/node-token`

@@ -126,7 +126,7 @@ echo ""
 echo "==> Installing nightly K3s state backup to the USB drive..."
 # Power loss can corrupt the SD card. This copies the K3s datastore, token, and certs to
 # the USB drive every night so a reflash can restore the cluster instead of rebuilding it.
-# Restore steps: bootstrap/docs/post-reflash.md (Phase 0).
+# Restore steps: bootstrap/docs/rebuild.md (step 1.8).
 sudo tee /usr/local/sbin/k3s-backup.sh > /dev/null << 'EOF'
 #!/usr/bin/env bash
 set -euo pipefail

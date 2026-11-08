@@ -5,7 +5,7 @@
 # Helm repos are added for the current user.
 #
 # Usage:
-#   curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/install-helm.sh | bash
+#   curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/bootstrap/scripts/install-helm.sh | bash
 #     or
 #   bash install-helm.sh
 

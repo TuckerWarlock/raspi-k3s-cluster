@@ -1,165 +1,122 @@
 # 07 — ArgoCD (GitOps Management)
 
-ArgoCD is the GitOps controller for this cluster. After bootstrapping it manages itself and
-all other workloads from the Git repository — any push to `main` is automatically applied to
-the cluster.
+> Reference guide. Bootstrap steps are in [rebuild.md](rebuild.md#phase-3--argocd-and-the-apps),
+> steps 3.3–3.4 and 3.7.
 
-## Prerequisites
+ArgoCD deploys and manages everything in the cluster except itself. Any push to `main` is
+applied automatically (`automated` sync with `prune` and `selfHeal` on every app).
 
-- K3s server and agents running (steps 01–03)
-- MetalLB pool applied (step 04)
-- Traefik running with an external IP (step 05)
-- Laptop `/etc/hosts` updated with `argocd.cluster.local` pointing to the Traefik external IP
+## How it's deployed
 
-## Step 1 — Install ArgoCD via helmfile
+- **ArgoCD itself:** `helmfile sync` installs the `argo/argo-cd` chart (version pinned in
+  `helmfile.yaml`) with `cluster/argocd/argocd-values.yaml`. This is the only Helm release
+  helmfile manages.
+- **Everything else:** `kubectl apply -f cluster/argocd/root-application.yaml` creates the
+  `cluster-addons` app, which manages:
 
-If you ran `helmfile sync` in step 04, ArgoCD is already installed. Verify:
-
-```bash
-kubectl -n argocd get pods
+```
+cluster/argocd/
+├── root-application.yaml        # cluster-addons → watches addons/
+└── addons/
+    ├── metallb.yaml             # Helm chart
+    ├── metallb-config.yaml      # cluster/core-system/metallb/config/
+    ├── traefik.yaml             # Helm chart
+    ├── victoria-metrics.yaml    # Helm chart (OCI)
+    ├── argocd-config.yaml       # cluster/argocd/config/ — ArgoCD ingress + OCI repo secret
+    └── workloads.yaml           # → watches cluster/argocd/workloads/
+                                 #     └── gatus.yaml → workloads/gatus/
 ```
 
-If helmfile has not been run yet:
+Helm-chart apps use two sources: the upstream chart, plus this repo as `$values` so the
+values file lives in Git.
+
+## Component placement
+
+| Component | Node | Why |
+|---|---|---|
+| application-controller | `pi4controller` | 512Mi limit — a Pi Zero's entire RAM |
+| server, repo-server, redis | Pi Zeros (`node-role.kubernetes.io/worker`) | Keeps the controller's memory free |
+| notifications, applicationset | disabled | Unused |
+
+The server's probes start after 60s because the Zeros are slow to start it.
+
+## Settings worth knowing
+
+| Setting | Why |
+|---|---|
+| `server.insecure: true` | Traefik terminates TLS. Without this, ArgoCD redirects HTTP→HTTPS itself and loops |
+| `timeout.reconciliation: 300s` | Checks Git every 5 minutes (default 3) to cut churn on the controller |
+| `controller.status/operation.processors: 5 / 3` | Fewer workers, less memory, for ~8 apps |
+| `accounts.admin: apiKey,login` | Lets the admin account create API tokens |
+
+## Adding a workload
+
+1. Put the manifests and a `kustomization.yaml` in `workloads/<app>/` (see `workloads/gatus/`).
+2. Copy `cluster/argocd/workloads/gatus.yaml` to `cluster/argocd/workloads/<app>.yaml` and
+   change `name`, `path`, and `destination.namespace`.
+3. Add `<app>.yaml` to `cluster/argocd/workloads/kustomization.yaml`.
+4. Run `./local_ci.sh`, then push. Deploy one app at a time —
+   [memory-management.md → Safe Deployment Procedure](memory-management.md#safe-deployment-procedure).
+
+## Day-to-day commands
 
 ```bash
-cd ~/raspi-k3s-cluster
-helmfile sync
+kubectl -n argocd get applications                              # status of everything
+kubectl -n argocd annotate app <app> argocd.argoproj.io/refresh=normal --overwrite   # re-check Git now
+kubectl -n argocd annotate app <app> argocd.argoproj.io/refresh=hard --overwrite     # also re-render charts
+kubectl -n argocd get app <app> -o jsonpath='{.status.conditions}{"\n"}{.status.operationState.message}{"\n"}'
 ```
 
-## Step 2 — Apply the ArgoCD Ingress
-
-The Ingress resource that exposes `argocd.cluster.local` is a raw manifest and is not part of
-the Helm chart. Apply it manually:
-
-```bash
-kubectl apply -f cluster/argocd/argocd-ingress.yaml
-```
-
-Verify it was created:
-
-```bash
-kubectl -n argocd get ingress
-# Expected: argocd-server with HOST argocd.cluster.local
-```
-
-> **Why `server.insecure: true`?**
-> ArgoCD server defaults to forcing HTTP → HTTPS redirects internally. When Traefik
-> terminates TLS at the ingress layer and proxies plain HTTP to the backend, this creates
-> a redirect loop. Setting `configs.params.server.insecure: true` in `argocd-values.yaml`
-> disables ArgoCD's internal redirect so Traefik handles all TLS negotiation.
-
-## Step 3 — Access the ArgoCD UI
-
-Open https://argocd.cluster.local in your browser. Accept the self-signed certificate warning
-(Traefik uses a default self-signed cert until cert-manager is configured).
-
-Get the initial admin password:
-
-```bash
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath="{.data.password}" | base64 -d
-echo   # add newline
-```
-
-Login with username `admin` and the password above.
-
-> **Change the password** after first login: Settings → User Info → Update Password.
-
-## Step 4 — Bootstrap the App of Apps
-
-Apply the root Application CRD once. This tells ArgoCD to watch `cluster/argocd/addons/`
-and automatically deploy everything defined there:
-
-```bash
-kubectl apply -f cluster/argocd/root-application.yaml
-```
-
-ArgoCD will now auto-sync and deploy:
-- Prometheus (`cluster/monitoring/prometheus/`)
-- Grafana (`cluster/monitoring/grafana/`)
-
-Watch the sync in the UI or via CLI:
-
-```bash
-kubectl -n argocd get applications
-# Expected: cluster-addons Synced Healthy
-```
-
-## GitOps workflow (ongoing)
-
-From this point forward, the cluster is fully GitOps-managed:
-
-1. Make a change to a manifest in `cluster/`
-2. Commit and push to `main`
-3. ArgoCD detects the drift within ~3 minutes
-4. The cluster auto-syncs to match Git
-
-To force an immediate sync:
-
-```bash
-# Via kubectl
-kubectl -n argocd patch application cluster-addons \
-  --type merge -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"revision":"HEAD"}}}'
-
-# Or click "Sync" in the ArgoCD UI
-```
-
-## Adding new workloads
-
-To deploy an application via GitOps:
-
-1. Add manifests to `cluster/workloads/<app-name>/`
-2. Create an Application CRD in `cluster/argocd/workloads/<app-name>.yaml`
-3. Add the filename to `cluster/argocd/workloads/kustomization.yaml`
-4. Commit and push — ArgoCD picks it up automatically
-
-See `cluster/argocd/README.md` for a full example Application CRD.
+Upgrade ArgoCD itself: bump `version:` in `helmfile.yaml` (check `argocd-values.yaml` keys
+against `helm show values argo/argo-cd --version <new>`), push, then on the Pi
+`git pull && helmfile sync`.
 
 ## Troubleshooting
 
-**UI returns a redirect loop or blank page**
+**App `Unknown` with `field not declared in schema`**
 
-ArgoCD server is not in insecure mode. Verify the Helm values:
+ArgoCD is older than the cluster's Kubernetes and can't diff newer fields. K3s installs the
+latest stable release, so this shows up after a rebuild. Upgrade the ArgoCD chart (above).
+
+**App `Unknown` with `context deadline exceeded`**
+
+The repo-server (on a Pi Zero) didn't render the chart within 60s. A Helm repo whose
+`index.yaml` is several MB takes over a minute to fetch on a Zero. Pull that chart from
+its OCI registry instead — see `cluster/argocd/config/repo-victoriametrics-oci.yaml`.
+
+**Sync fails with `Installing CRDs with version before v1.5.0 is prohibited`**
+
+A chart is trying to install older Gateway API CRDs than the ones K3s ships. Upgrade that
+chart to a version that doesn't bundle them (this is why Traefik is on 42.x).
+
+**Sync keeps retrying an old revision after a fix was pushed**
+
+An operation started before your push keeps retrying the revision it began with until its
+retries run out (a few minutes); the next auto-sync then uses the new commit. Wait it out,
+or terminate it in the UI (**App → Terminate**).
+
+**App permanently `OutOfSync` but every sync says `unchanged`**
+
+Large CRDs and client-side apply. Add `ServerSideApply=true` to the app's `syncOptions`
+(as in `cluster/argocd/addons/traefik.yaml`).
+
+**`argocd.cluster.local` doesn't load**
 
 ```bash
-helm -n argocd get values argocd | grep insecure
-# Expected: server.insecure: true
+kubectl -n traefik get svc traefik          # EXTERNAL-IP 192.168.1.241?
+kubectl -n argocd get ingress               # host argocd.cluster.local?
 ```
 
-If missing, upgrade with the correct values:
+Then check the hostname resolves to `192.168.1.241` on this device
+([rebuild.md 3.6](rebuild.md#36--resolve-the-hostnames)).
+
+**Forgot the admin password**
+
+Before you change it, it's in the `argocd-initial-admin-secret` secret
+([rebuild.md 3.7](rebuild.md#37--log-in-to-argocd)). After, reset it with the `argocd` CLI:
 
 ```bash
-helm -n argocd upgrade argocd argo/argo-cd --version 7.8.1 \
-  --values cluster/argocd/argocd-values.yaml
-```
-
-**`argocd.cluster.local` not resolving**
-
-Verify Traefik has an external IP and `/etc/hosts` on your laptop is correct:
-
-```bash
-kubectl -n traefik get svc traefik
-# EXTERNAL-IP must not be <pending>
-```
-
-**Application stuck in `OutOfSync` or `Degraded`**
-
-```bash
-kubectl -n argocd describe application cluster-addons
-kubectl -n argocd get events --sort-by='.lastTimestamp'
-```
-
-Check that the `repoURL` in `root-application.yaml` matches your actual GitHub repository URL.
-
-**Can't log in — forgot password**
-
-Reset it by deleting the initial secret (causes ArgoCD to regenerate it on restart) or use
-the CLI:
-
-```bash
-# Port-forward if ingress isn't accessible
 kubectl port-forward -n argocd svc/argocd-server 8080:80
-
-argocd login localhost:8080 --username admin --password <current-pw>
+argocd login localhost:8080 --username admin --plaintext
 argocd account update-password
 ```

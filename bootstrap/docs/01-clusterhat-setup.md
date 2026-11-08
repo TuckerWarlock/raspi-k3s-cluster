@@ -1,5 +1,7 @@
 # 01 — ClusterHAT OS Setup & Management
 
+> Reference guide. The ordered build steps are in [rebuild.md](rebuild.md).
+
 Reference: https://clusterctrl.com/setup-control and https://clusterctrl.com/setup-software
 
 ## Image Selection
@@ -51,7 +53,7 @@ Flash the controller image to the Pi 4's SD card, then flash each node image (P1
 2. The ClusterHAT controls power to p1–p4.
 3. SSH into the Pi 4 controller:
    ```bash
-   ssh pi@<pi4-ip>
+   ssh warl0ck@pi4controller.local   # the username you set in Imager
    ```
 
 ## Power Management with clusterctrl
@@ -125,21 +127,7 @@ sudo shutdown -h now   # or sudo reboot
 
 ### Node Boot Power Spikes
 
-**Power on nodes one at a time with 30s delays.** Pi Zero 2 W nodes draw significantly more power than original Pi Zeros. Powering them all on simultaneously causes boot power spikes that can brownout the Pi 4 and drop its network connectivity.
-
-```bash
-clusterctrl hub on    # enable USB hub first
-clusterctrl fan on    # start fan if using PiHut case
-
-# Power on nodes one at a time
-for i in 1 2 3 4; do
-  echo "==> Powering on p$i..."
-  clusterctrl on p$i
-  sleep 30
-done
-
-clusterctrl status    # verify all nodes are on
-```
+**Power on nodes one at a time with 30s delays.** Pi Zero 2 W nodes draw significantly more power than original Pi Zeros. Powering them all on simultaneously causes boot power spikes that can brownout the Pi 4 and drop its network connectivity. The commands are in [Typical Boot Sequence](#typical-boot-sequence) below.
 
 ### Power Wiring — Critical
 
@@ -174,23 +162,17 @@ clusterctrl status            # verify all nodes are on
 
 Then wait ~60 seconds for the Pi Zeros to finish booting before proceeding with K3s setup.
 
-## Enable CNAT (Network Routing)
+## CNAT (Network Routing)
 
-CNAT routes internet traffic from p1–p4 through the Pi 4 controller.
-
-```bash
-# On the Pi 4 controller
-clusterctrl cnat on
-```
-
-Verify IP forwarding is active:
+The CNAT controller image already routes p1–p4's traffic through the Pi 4 — there is nothing
+to enable (`clusterctrl cnat on` is not a valid command on this image). Check that forwarding
+is on:
 
 ```bash
-sysctl net.ipv4.ip_forward
-# Expected: net.ipv4.ip_forward = 1
+sysctl net.ipv4.ip_forward   # Expected: net.ipv4.ip_forward = 1
 ```
 
-If not set, enable it permanently:
+If it isn't:
 
 ```bash
 echo "net.ipv4.ip_forward=1" | sudo tee /etc/sysctl.d/99-k3s.conf
@@ -199,18 +181,13 @@ sudo sysctl -p /etc/sysctl.d/99-k3s.conf
 
 ## Verify Node Connectivity
 
-SSH into each node from the Pi 4 and confirm internet access:
+From the Pi 4, SSH into each node and confirm internet access:
 
 ```bash
-ssh pi@p1   # or ssh pi@172.19.181.1
-ssh pi@p2
-ssh pi@p3
-ssh pi@p4
-
-# From within a node, verify internet:
-ping -c 3 8.8.8.8
+ssh warl0ck@172.19.181.1   # p1 — .2/.3/.4 for p2–p4 (or p1.local etc. once mDNS resolves)
+ping -c 3 8.8.8.8          # from within the node
 ```
 
-> Default CNAT subnet is `172.19.181.x`. Verify with `ip addr` on the Pi 4's `usb0` interface.
-> Node hostnames default to `p1`–`p4` on the CNAT subnet.
-
+> The CNAT subnet is `172.19.181.0/24`: the Pi 4 is `.254` on `br0`, and each node appears
+> on the Pi 4 as an `ethpiN` interface. A node that's powered on but has no `ethpiN` needs
+> a power cycle — see [rebuild.md → Pi Zero unreachable](rebuild.md#pi-zero-unreachable).
