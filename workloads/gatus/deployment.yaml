@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gatus-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatus
+spec:
+  replicas: 1
+  # RWO PVC — the old pod must release it before the new one starts
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: gatus
+  template:
+    metadata:
+      labels:
+        app: gatus
+      annotations:
+        # Scraped by VictoriaMetrics' kubernetes-pods job
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+    spec:
+      # Pinned to the controller: it has LAN access (Pi-hole / k3s API checks)
+      # and local-path puts the PVC on the USB drive here
+      nodeSelector:
+        kubernetes.io/hostname: pi4controller
+      containers:
+        - name: gatus
+          image: twinproduction/gatus:v5.38.0
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: GATUS_CONFIG_PATH
+              value: /config/config.yaml
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          configMap:
+            name: gatus-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: gatus-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatus
+spec:
+  selector:
+    app: gatus
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

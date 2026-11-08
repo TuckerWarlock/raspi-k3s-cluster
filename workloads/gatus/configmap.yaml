@@ -1,0 +1,70 @@
+# Gatus endpoint checks. Edit here; ArgoCD syncs it and Gatus reloads config.yaml
+# automatically when the mounted ConfigMap changes (no pod restart needed).
+#
+# Note: *.cluster.local can't be resolved from inside pods (cluster.local is the
+# Kubernetes service domain), so in-cluster apps are checked via their Service DNS.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gatus-config
+data:
+  config.yaml: |
+    metrics: true
+
+    storage:
+      type: sqlite
+      path: /data/data.db
+
+    ui:
+      title: Cluster Status
+      header: raspi-k3s-cluster
+
+    endpoints:
+      # --- Cluster core ---
+      - name: k3s-api
+        group: cluster
+        # In-cluster API Service: works regardless of the controller's LAN IP
+        url: "tcp://kubernetes.default.svc:443"
+        interval: 1m
+        conditions:
+          - "[CONNECTED] == true"
+
+      - name: traefik
+        group: cluster
+        # Traefik's LoadBalancer IP from MetalLB; any non-5xx means it's routing
+        url: "http://192.168.1.241"
+        interval: 1m
+        conditions:
+          - "[STATUS] < 500"
+
+      - name: argocd
+        group: cluster
+        url: "http://argocd-server.argocd.svc/healthz"
+        interval: 1m
+        conditions:
+          - "[STATUS] == 200"
+
+      - name: victoria-metrics
+        group: cluster
+        url: "http://victoria-metrics-victoria-metrics-single-server.monitoring.svc:8428/health"
+        interval: 1m
+        conditions:
+          - "[STATUS] == 200"
+
+      # --- Home network ---
+      - name: pihole-dns
+        group: network
+        url: "192.168.1.158"
+        interval: 1m
+        dns:
+          query-name: "example.com"
+          query-type: "A"
+        conditions:
+          - "[DNS_RCODE] == NOERROR"
+
+      - name: pihole-admin
+        group: network
+        url: "http://192.168.1.158/admin/"
+        interval: 5m
+        conditions:
+          - "[STATUS] < 400"

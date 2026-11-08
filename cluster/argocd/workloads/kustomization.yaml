@@ -3,4 +3,5 @@ kind: Kustomization
 
 # User application workloads managed by ArgoCD.
 # Add an Application manifest here for each new workload.
-resources: []
+resources:
+  - gatus.yaml
