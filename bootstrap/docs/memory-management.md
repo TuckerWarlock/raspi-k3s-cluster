@@ -87,6 +87,7 @@ Requests should reflect real steady-state usage. Current settings and measured u
 | MetalLB speaker / controller | pi4controller | 64Mi / 32Mi | 128Mi / 128Mi | ~50Mi / ~30Mi |
 | Traefik | pi4controller | 64Mi | 128Mi | ~25Mi |
 | Gatus | pi4controller | 32Mi | 64Mi | ~10Mi |
+| ntfy | pi4controller | 32Mi | 64Mi | not yet measured |
 | ArgoCD server | Pi Zero | 128Mi | 256Mi | ~65–100Mi |
 | ArgoCD repo-server | Pi Zero | 128Mi | 384Mi | ~65–115Mi |
 | ArgoCD redis | Pi Zero | 32Mi | 128Mi | ~20Mi |
@@ -142,10 +143,13 @@ stop and investigate before deploying anything new.
 
 ## Alerting
 
-Not set up yet. The old Prometheus memory alerts (node above 75% for 2m, under 400Mi
-available for 1m, container above 90% of its limit for 5m — rules in git history at
-`d8cf5eb^:cluster/monitoring/prometheus/prometheus-config.yaml`) are planned to come back
-via `vmalert`, with Gatus and vmalert both notifying through ntfy.
+**Service health:** Gatus sends a push to the `cluster-status` ntfy topic when any check fails
+3 times in a row (~3 minutes), and again when it recovers (`workloads/gatus/configmap.yaml`).
+
+**Memory pressure:** not alerted yet. The old Prometheus rules (node above 75% for 2m, under
+400Mi available for 1m, container above 90% of its limit for 5m — in git history at
+`d8cf5eb^:cluster/monitoring/prometheus/prometheus-config.yaml`) are planned to come back via
+`vmalert`, also notifying through ntfy.
 
 Until then, check by hand: `kubectl top nodes`, or query VictoriaMetrics at
 `https://vm.cluster.local/vmui`.

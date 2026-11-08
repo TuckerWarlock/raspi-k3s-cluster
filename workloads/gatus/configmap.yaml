@@ -19,6 +19,21 @@ data:
       title: Cluster Status
       header: raspi-k3s-cluster
 
+    # Push failures and recoveries to the iPhone via ntfy (in-cluster Service, so no TLS
+    # or DNS needed). NTFY_TOKEN comes from the gatus-ntfy Secret — created by hand,
+    # see bootstrap/docs/rebuild.md step 3.8. Until it exists, alerts fail with 403.
+    alerting:
+      ntfy:
+        url: "http://ntfy.ntfy.svc"
+        topic: "cluster-status"
+        token: "${NTFY_TOKEN}"
+        priority: 4
+        default-alert:
+          # ~3 minutes down before alerting; 2 good checks to resolve
+          failure-threshold: 3
+          success-threshold: 2
+          send-on-resolved: true
+
     endpoints:
       # --- Cluster core ---
       - name: k3s-api
@@ -26,6 +41,8 @@ data:
         # In-cluster API Service: works regardless of the controller's LAN IP
         url: "tcp://kubernetes.default.svc:443"
         interval: 1m
+        alerts:
+          - type: ntfy
         conditions:
           - "[CONNECTED] == true"
 
@@ -34,6 +51,8 @@ data:
         # Traefik's LoadBalancer IP from MetalLB; any non-5xx means it's routing
         url: "http://192.168.1.241"
         interval: 1m
+        alerts:
+          - type: ntfy
         conditions:
           - "[STATUS] < 500"
 
@@ -41,6 +60,8 @@ data:
         group: cluster
         url: "http://argocd-server.argocd.svc/healthz"
         interval: 1m
+        alerts:
+          - type: ntfy
         conditions:
           - "[STATUS] == 200"
 
@@ -48,14 +69,28 @@ data:
         group: cluster
         url: "http://victoria-metrics-victoria-metrics-single-server.monitoring.svc:8428/health"
         interval: 1m
+        alerts:
+          - type: ntfy
         conditions:
           - "[STATUS] == 200"
+
+      - name: ntfy
+        group: cluster
+        url: "http://ntfy.ntfy.svc/v1/health"
+        interval: 1m
+        alerts:
+          - type: ntfy
+        conditions:
+          - "[STATUS] == 200"
+          - "[BODY].healthy == true"
 
       # --- Home network ---
       - name: pihole-dns
         group: network
         url: "192.168.1.158"
         interval: 1m
+        alerts:
+          - type: ntfy
         dns:
           query-name: "example.com"
           query-type: "A"
@@ -66,5 +101,7 @@ data:
         group: network
         url: "http://192.168.1.158/admin/"
         interval: 5m
+        alerts:
+          - type: ntfy
         conditions:
           - "[STATUS] < 400"

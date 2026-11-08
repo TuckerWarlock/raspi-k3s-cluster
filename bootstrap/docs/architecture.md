@@ -87,15 +87,15 @@ K3s's bundled Traefik and ServiceLB are **disabled** (`--disable traefik --disab
 | **Traefik** | Ingress controller, mkcert wildcard TLS | ArgoCD (Helm) | controller |
 | **VictoriaMetrics** | Metrics storage + scraping (single-node) | ArgoCD (Helm, OCI) | controller |
 | **Gatus** | Status page and uptime checks | ArgoCD (manifests) | controller |
+| **ntfy** | Push notifications to the iPhone (`ntfy.home.arpa`) | ArgoCD (manifests) | controller |
 
 ### Planned
 
 | Component | Purpose | Notes |
 |-----------|---------|-------|
-| **ntfy** | Push notifications | Alert target for Gatus and vmalert |
 | **vmalert** | Alert rules on VictoriaMetrics | Brings back the old memory-pressure alerts |
 | **WireGuard / Tailscale** | Remote access | |
-| **SOPS + age** | Encrypted secrets in Git | Not set up — the only secret today (`cluster-local-tls`) is created by hand |
+| **SOPS + age** | Encrypted secrets in Git | Not set up — today's secrets (`cluster-local-tls`, `ntfy-tls`, `gatus-ntfy`) are created by hand |
 | **Cilium + Hubble** | eBPF CNI + network observability | Replaces Flannel; install K3s with `--flannel-backend=none` |
 | **cert-manager** | Let's Encrypt certificates | Deferred — the mkcert wildcard works for a homelab |
 
@@ -131,6 +131,7 @@ workloads schedule across the Pi Zero workers.
 | ArgoCD application-controller | 512Mi memory limit = entire Pi Zero RAM budget |
 | VictoriaMetrics | PVC on USB drive via local-path; 256Mi limit |
 | Gatus | Needs LAN access for Pi-hole / k3s API checks; PVC on USB drive |
+| ntfy | Relays iOS push via ntfy.sh over the LAN; users/tokens on a USB-backed PVC |
 
 All controller-pinned workloads use:
 ```yaml
@@ -229,3 +230,4 @@ Capturing key decisions and the reasoning behind them.
 | Storage | local-path (K3s default) | Longhorn | Longhorn too heavy; revisit if persistent storage needs grow |
 | Chart source for VictoriaMetrics | OCI (`ghcr.io`) | HTTP Helm repo | The 3.6MB HTTP `index.yaml` took the Pi Zero repo-server ~74s, past ArgoCD's 60s deadline |
 | Pi 4 data | USB drive at `/mnt/usb` | SD card only | SD card corrupts on power loss; images, PVCs, and backups live on USB |
+| ntfy hostname | `ntfy.home.arpa` | `ntfy.cluster.local` | iOS resolves `.local` only via mDNS, so a Pi-hole record would never be used by the phone |

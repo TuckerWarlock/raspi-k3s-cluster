@@ -39,6 +39,7 @@ Ingresses use `ingressClassName: traefik` and the annotation
 | `vm.cluster.local` | VictoriaMetrics (UI at `/vmui`) |
 | `status.cluster.local` | Gatus |
 | `traefik.cluster.local` | Traefik dashboard at `/dashboard/` |
+| `ntfy.home.arpa` | ntfy — not `.local`, because iOS won't resolve `.local` through DNS. Uses its own mkcert cert (`ntfy-tls` in the `ntfy` namespace) |
 
 All point to `192.168.1.241` — via Pi-hole Local DNS records or `/etc/hosts`
 ([rebuild.md 3.6](rebuild.md#36--resolve-the-hostnames)).

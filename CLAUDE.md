@@ -7,8 +7,8 @@ from `main`, so **merging to `main` deploys to the live cluster**.
 ## Current state
 
 - **Running:** K3s v1.37, MetalLB, Traefik (chart 42.x), ArgoCD v3.6 (chart 10.x),
-  VictoriaMetrics single-node, Gatus.
-- **Planned:** ntfy (alert delivery for Gatus and vmalert), then WireGuard / Tailscale.
+  VictoriaMetrics single-node, Gatus, ntfy.
+- **Planned:** vmalert (memory alerts via ntfy), then WireGuard / Tailscale.
 - **Removed:** Longhorn (too heavy; using K3s local-path), Prometheus/Grafana/Loki (replaced by
   VictoriaMetrics), Monday/Ollama (LLM inference too slow on the Pi 4 CPU).
 
@@ -94,7 +94,9 @@ the cluster's Kubernetes version when bumping — see the version-skew entries i
 | CNAT | `172.19.181.0/24` — controller `.254` on `br0`, p1–p4 `.1`–`.4` on `usb0` |
 | Pods / Services | `10.42.0.0/16` / `10.43.0.0/16` (K3s defaults) |
 
-Hostnames (`*.cluster.local` → `192.168.1.241`): `argocd`, `vm`, `status`, `traefik`.
+Hostnames (→ `192.168.1.241`): `argocd`, `vm`, `status`, `traefik` `.cluster.local`, plus
+`ntfy.home.arpa` — iOS won't resolve `.local` via DNS, so anything the phone uses needs a
+non-`.local` name and its own mkcert cert.
 
 ## Shell scripts
 
@@ -144,5 +146,6 @@ their own commit so they can be pushed one at a time.
 
 - `/boot/firmware/cmdline.txt` must stay a **single line** — a second line stops the Pi booting.
 - Always `clusterctrl off` before rebooting or unplugging the Pi 4.
-- Never commit secrets. The only secret today, `cluster-local-tls`, is created by hand
-  ([rebuild.md 3.5](bootstrap/docs/rebuild.md#35--create-the-tls-secret-for-clusterlocal)).
+- Never commit secrets. Today's secrets — `cluster-local-tls`, `ntfy-tls`, `gatus-ntfy` — and
+  ntfy's users/tokens are created by hand ([rebuild.md 3.5](bootstrap/docs/rebuild.md#35--create-the-tls-secret-for-clusterlocal),
+  [3.8](bootstrap/docs/rebuild.md#38--set-up-ntfy-certificate-users-gatus-token-iphone)).
