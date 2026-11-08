@@ -45,6 +45,14 @@ spec:
           env:
             - name: GATUS_CONFIG_PATH
               value: /config/config.yaml
+            # ntfy access token for alerts (Secret created by hand — rebuild.md step 3.8).
+            # optional: Gatus still starts before the Secret exists; alerts just fail.
+            - name: NTFY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gatus-ntfy
+                  key: NTFY_TOKEN
+                  optional: true
           resources:
             requests:
               cpu: 10m

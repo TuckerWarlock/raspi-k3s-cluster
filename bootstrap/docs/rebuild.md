@@ -400,7 +400,8 @@ kubectl -n argocd get applications     # all Synced + Healthy
 systemctl status clusterhat-fan k3s-backup.timer
 ```
 
-Then open `https://status.cluster.local` — every Gatus check should be green.
+Then open `https://status.cluster.local` — every Gatus check should be green. Failures and
+recoveries are pushed to the `cluster-status` ntfy topic (step 3.8).
 
 Before adding workloads, read [memory-management.md](memory-management.md).
 
