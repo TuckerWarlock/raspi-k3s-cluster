@@ -24,6 +24,9 @@ ingressRoute:
     enabled: true
     entryPoints:
       - web
+    # Scope to a hostname: the chart default (PathPrefix /dashboard || /api, any host) captures
+    # every app's /api/* over HTTP — e.g. VictoriaMetrics /api/v1 and the Gatus UI's API.
+    matchRule: Host(`traefik.cluster.local`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))
 
 ports:
   web:

@@ -370,6 +370,7 @@ If the Traefik IP has changed or this is a fresh laptop:
 echo "192.168.1.241 argocd.cluster.local" | sudo tee -a /etc/hosts
 echo "192.168.1.241 vm.cluster.local" | sudo tee -a /etc/hosts
 echo "192.168.1.241 status.cluster.local" | sudo tee -a /etc/hosts
+echo "192.168.1.241 traefik.cluster.local" | sudo tee -a /etc/hosts   # Traefik dashboard: http://traefik.cluster.local/dashboard/
 ```
 
 > Better: add these as Local DNS records on the Pi-hole so every device (including phones)
