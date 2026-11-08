@@ -88,7 +88,8 @@ Requests should reflect real steady-state usage. Current settings and measured u
 | Traefik | pi4controller | 64Mi | 128Mi | ~25Mi |
 | Gatus | pi4controller | 32Mi | 64Mi | ~10Mi |
 | ntfy | pi4controller | 32Mi | 64Mi | ~15Mi |
-| vmalert / Alertmanager | pi4controller | 32Mi / 32Mi | 64Mi / 64Mi | not yet measured |
+| vmalert / Alertmanager | pi4controller | 32Mi / 32Mi | 64Mi / 64Mi | ~5Mi / ~12Mi |
+| kube-state-metrics | Pi Zero | 32Mi | 64Mi | not yet measured |
 | ArgoCD server | Pi Zero | 128Mi | 256Mi | ~65–100Mi |
 | ArgoCD repo-server | Pi Zero | 128Mi | 384Mi | ~65–115Mi |
 | ArgoCD redis | Pi Zero | 32Mi | 128Mi | ~20Mi |
@@ -158,12 +159,22 @@ Alertmanager pushes firing and resolved alerts to the same ntfy topic
 | `ContainerNearMemoryLimit` | a container is above 90% of its memory limit for 10m | warning |
 | `ContainerOOMKilled` | a container was OOM-killed in the last 15m | warning |
 | `ScrapeTargetDown` | a VictoriaMetrics scrape target is down for 10m | warning |
+| `PodCrashLooping` | a container is in `CrashLoopBackOff` for 5m | critical |
+| `PodNotReady` | a Running/Pending pod is not Ready for 10m | warning |
+| `DeploymentReplicasMismatch` / `StatefulSetReplicasMismatch` | desired ≠ available/ready replicas for 10m | warning |
+| `DaemonSetNotReady` | a DaemonSet has pods not ready for 10m | warning |
+| `NodeNotReady` | a node's `Ready` condition is false/unknown for 5m | critical |
+| `PVCPending` | a PVC is `Pending` for 15m | warning |
+
+The last seven come from kube-state-metrics, which watches only pods, deployments,
+statefulsets, daemonsets, nodes, and PVCs and exposes only the 13 metrics these rules use
+(`cluster/monitoring/kube-state-metrics/values.yaml`).
 
 "Available" is `machine_memory_bytes` minus the root cgroup's working set — the same number
-the kubelet uses for eviction. Alertmanager groups by alert and node, and re-sends a still-firing
-alert every 12h.
+the kubelet uses for eviction. Alertmanager sends one notification per alert and object (node,
+pod, deployment, …), and re-sends a still-firing alert every 12h.
 
-Until then, check by hand: `kubectl top nodes`, or query VictoriaMetrics at
+Ad hoc, check by hand: `kubectl top nodes`, or query VictoriaMetrics at
 `https://vm.cluster.local/vmui`.
 
 ---
