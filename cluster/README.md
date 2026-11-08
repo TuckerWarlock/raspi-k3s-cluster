@@ -6,28 +6,21 @@ This directory contains all manifests and Helm releases for the cluster. Changes
 
 ## Structure
 
-- **core-system/** — Core infrastructure deployed via [helmfile.yaml](../helmfile.yaml):
-  - `metallb/` — Load balancer (helmfile release)
-  - `traefik/` — Ingress controller (helmfile release)
-  - `longhorn/` — Distributed storage (helmfile release)
+- **core-system/** — Helm values + config for core infrastructure (deployed by ArgoCD):
+  - `metallb/` — Load balancer
+  - `traefik/` — Ingress controller
 
 - **argocd/** — GitOps management (helmfile release):
   - Application definitions that auto-sync this repo
 
-- **monitoring/** — Prometheus + Grafana (kubectl apply):
-  - StatefulSets, ConfigMaps, RBAC, Ingress
-  - See [bootstrap/docs/08-prometheus-grafana-monitoring.md](../bootstrap/docs/08-prometheus-grafana-monitoring.md)
+- **monitoring/** — VictoriaMetrics Helm values (deployed by ArgoCD). See [monitoring/README.md](monitoring/README.md)
 
 ## Deployment Workflow
 
-**Core infrastructure** (MetalLB, Traefik, Longhorn, ArgoCD):
+**ArgoCD** (the only helmfile release), then the root Application deploys everything else:
 ```bash
 helmfile sync
-```
-
-**Monitoring** (Prometheus + Grafana):
-```bash
-kubectl apply -f cluster/monitoring/
+kubectl apply -f cluster/argocd/root-application.yaml
 ```
 
 **User workloads** (via ArgoCD):

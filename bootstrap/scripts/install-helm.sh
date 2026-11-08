@@ -11,13 +11,6 @@
 
 set -euo pipefail
 
-echo "==> Installing open-iscsi (required for Longhorn)..."
-sudo apt update
-sudo apt install -y open-iscsi nfs-common
-sudo systemctl enable --now iscsid
-echo "==> ✓ open-iscsi installed"
-
-echo ""
 echo "==> Installing Helm..."
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
@@ -40,8 +33,7 @@ echo ""
 echo "==> Adding common repos..."
 helm repo add metallb https://metallb.github.io/metallb
 helm repo add traefik https://traefik.github.io/charts
-helm repo add longhorn https://charts.longhorn.io
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add vm https://victoriametrics.github.io/helm-charts/
 helm repo add argo https://argoproj.github.io/argo-helm
 helm repo update
 

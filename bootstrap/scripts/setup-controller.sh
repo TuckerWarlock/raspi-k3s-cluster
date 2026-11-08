@@ -11,7 +11,7 @@ sudo apt update
 
 echo ""
 echo "==> Installing packages..."
-sudo apt install -y lsd git curl
+sudo apt install -y lsd git curl sqlite3
 
 echo ""
 echo "==> Installing oh-my-posh..."
@@ -99,6 +99,52 @@ EOF
 
 sudo systemctl enable clusterctrl-off.service
 echo "    clusterctrl-off.service enabled — nodes will auto power-off on reboot/shutdown."
+
+echo ""
+echo "==> Installing nightly K3s state backup to the USB drive..."
+# Power loss can corrupt the SD card. This copies the K3s datastore, token, and certs to
+# the USB drive every night so a reflash can restore the cluster instead of rebuilding it.
+# Restore steps: bootstrap/docs/post-reflash.md (Phase 0).
+sudo tee /usr/local/sbin/k3s-backup.sh > /dev/null << 'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+SRC=/var/lib/rancher/k3s/server
+DEST=/var/lib/longhorn/backups/k3s-$(date +%F)
+mkdir -p "$DEST"
+sqlite3 "$SRC/db/state.db" ".backup '$DEST/state.db'"
+cp "$SRC/token" "$DEST/token"
+tar -czf "$DEST/tls-cred.tar.gz" -C "$SRC" tls cred
+# Keep the 7 most recent backups
+ls -1d /var/lib/longhorn/backups/k3s-* | head -n -7 | xargs -r rm -rf
+EOF
+sudo chmod 755 /usr/local/sbin/k3s-backup.sh
+
+sudo tee /etc/systemd/system/k3s-backup.service > /dev/null << 'EOF'
+[Unit]
+Description=Back up K3s datastore, token, and certs to the USB drive
+RequiresMountsFor=/var/lib/longhorn
+ConditionPathExists=/var/lib/rancher/k3s/server/db/state.db
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/k3s-backup.sh
+EOF
+
+sudo tee /etc/systemd/system/k3s-backup.timer > /dev/null << 'EOF'
+[Unit]
+Description=Nightly K3s state backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now k3s-backup.timer
+echo "    k3s-backup.timer enabled — nightly backups to /var/lib/longhorn/backups/"
 
 echo ""
 echo "==> Done! Run 'source ~/.bash_profile' or open a new shell to apply changes."

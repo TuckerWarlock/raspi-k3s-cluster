@@ -21,9 +21,8 @@ Complete setup guides are in [bootstrap/docs/](bootstrap/docs/):
 3. [K3s agents on Pi Zeros](bootstrap/docs/03-k3s-agents.md) — worker setup
 4. [MetalLB load balancer](bootstrap/docs/04-metallb-load-balancer.md)
 5. [Traefik ingress controller](bootstrap/docs/05-traefik-ingress.md)
-6. [Longhorn distributed storage](bootstrap/docs/06-longhorn.md) *(removed — using local-path-provisioner)*
-7. ArgoCD GitOps — deployed via `helmfile sync`
-8. [Monday AI assistant](bootstrap/docs/10-monday-ai-assistant.md) — Ollama + Open WebUI
+6. ArgoCD GitOps — deployed via `helmfile sync`
+7. VictoriaMetrics + Gatus — deployed by ArgoCD from `cluster/argocd/addons/` and `cluster/argocd/workloads/`
 
 > **Rebuilding after a reflash?** → [`bootstrap/docs/post-reflash.md`](bootstrap/docs/post-reflash.md)
 
@@ -51,9 +50,7 @@ raspi-k3s-cluster/
 │       ├── 03-k3s-agents.md            # K3s worker setup
 │       ├── 04-metallb-load-balancer.md # MetalLB load balancer
 │       ├── 05-traefik-ingress.md       # Traefik ingress controller
-│       ├── 06-longhorn.md              # Longhorn — removed, see note in file
 │       ├── 08-prometheus-grafana-monitoring.md # Monitoring stack
-│       ├── 10-monday-ai-assistant.md   # Monday AI assistant (Ollama + Open WebUI)
 │       └── architecture.md             # Architecture & decisions
 │
 ├── cluster/                             # Kubernetes manifests (managed by ArgoCD)
@@ -65,9 +62,9 @@ raspi-k3s-cluster/
 │   │   └── traefik/                    # Ingress controller
 │   │       ├── values.yaml             # Helm values
 │   │       └── traefik-test-ingress.yaml # Test ingress
-│   ├── monitoring/                     # Monitoring (Prometheus via Kustomize)
+│   ├── monitoring/                     # Monitoring namespace + VictoriaMetrics values
 │   │   ├── namespace.yaml
-│   │   └── prometheus/                 # Prometheus StatefulSet + config
+│   │   └── victoria-metrics/values.yaml
 │   └── argocd/                         # GitOps management (via helmfile)
 │       ├── namespace.yaml
 │       ├── application-cluster.yaml
@@ -75,11 +72,11 @@ raspi-k3s-cluster/
 │       └── values.yaml
 │
 ├── workloads/                          # User applications (managed by ArgoCD)
-│   └── monday/                         # Monday AI assistant (Ollama + Open WebUI)
+│   └── gatus/                          # Gatus uptime/status checks
 │       ├── namespace.yaml
-│       ├── ollama.yaml                 # Ollama LLM backend + PVC
-│       ├── open-webui.yaml             # Open WebUI chat interface + PVC
-│       ├── ingress.yaml                # Traefik ingress → monday.cluster.local
+│       ├── configmap.yaml              # Gatus endpoint checks
+│       ├── deployment.yaml             # Gatus + SQLite PVC
+│       ├── ingress.yaml                # Traefik ingress → status.cluster.local
 │       └── kustomization.yaml
 │
 ├── helmfile.yaml                       # Helm release definitions
@@ -107,8 +104,8 @@ raspi-k3s-cluster/
 - [MetalLB](https://metallb.universe.tf/) — bare-metal load balancer
 - [Traefik](https://traefik.io/) — ingress controller
 - [ArgoCD](https://argoproj.github.io/cd/) — GitOps continuous deployment
-- [Ollama](https://ollama.com/) — local LLM inference (Monday AI assistant)
-- [Open WebUI](https://openwebui.com/) — chat interface for Monday
+- [VictoriaMetrics](https://victoriametrics.com/) — metrics storage + scraping (Prometheus-compatible)
+- [Gatus](https://gatus.io/) — uptime/status checks at `status.cluster.local`
 
 ### Validation & CI
 - [kubeconform](https://github.com/yannh/kubeconform) — Kubernetes manifest schema validation

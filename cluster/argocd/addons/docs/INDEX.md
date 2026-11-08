@@ -2,8 +2,8 @@
 
 Documentation for addon services deployed by ArgoCD.
 
-Currently no active monitoring addons — Prometheus, Loki, Promtail, and Grafana were removed to free memory on pi4controller for AI inference workloads.
+Monitoring: VictoriaMetrics single-node. See [cluster/monitoring/README.md](../../../monitoring/README.md).
 
-For MetalLB, Traefik, Longhorn, and ArgoCD setup see the bootstrap guides in
+For MetalLB, Traefik, and ArgoCD setup see the bootstrap guides in
 [bootstrap/docs/](../../../../bootstrap/docs/).
 

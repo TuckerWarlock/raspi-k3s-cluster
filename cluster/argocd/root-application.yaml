@@ -5,9 +5,10 @@
 #   kubectl apply -f cluster/argocd/root-application.yaml
 #
 # What this deploys (via addons/kustomization.yaml):
-#   - Core infra: MetalLB, Traefik, Longhorn
+#   - Core infra: MetalLB, Traefik
+#   - Monitoring: VictoriaMetrics
 #   - ArgoCD config (ingress, etc.)
-#   - Workloads root app → manages cluster/argocd/workloads/ (Monday, etc.)
+#   - Workloads root app → manages cluster/argocd/workloads/ (Gatus, etc.)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

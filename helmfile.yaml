@@ -4,7 +4,7 @@ repositories:
 
 releases:
   # ArgoCD is the only component bootstrapped via helmfile.
-  # Everything else (MetalLB, Traefik, Longhorn, monitoring) is managed by ArgoCD
+  # Everything else (MetalLB, Traefik, monitoring, workloads) is managed by ArgoCD
   # after the root Application is applied (kubectl apply -f cluster/argocd/root-application.yaml).
   - name: argocd
     namespace: argocd

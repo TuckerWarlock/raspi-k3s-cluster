@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 cat <<'EOFMESSAGE'
 ==> Helm reset
 
-This script uninstalls the currently deployed Helm releases (including ArgoCD), removes the associated namespaces, runs the Longhorn cleanup helper, and clears all Helm repositories to simulate a fresh environment.
+This script uninstalls the currently deployed Helm releases (including ArgoCD), removes the associated namespaces, and clears all Helm repositories to simulate a fresh environment.
 EOFMESSAGE
 
 echo ""
@@ -28,16 +26,12 @@ for name in "${!RELEASES[@]}"; do
 done
 
 echo ""
-echo "==> Running dedicated Longhorn cleanup helper"
-bash "$SCRIPT_DIR/cleanup-longhorn.sh"
-
-echo ""
 declare -a NAMESPACES=(
   metallb-system
   traefik
   argocd
   monitoring
-  longhorn-system
+  gatus
 )
 
 for ns in "${NAMESPACES[@]}"; do

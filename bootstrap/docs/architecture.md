@@ -120,9 +120,8 @@ workloads schedule across the Pi Zero workers.
 | MetalLB | L2 ARP advertisement requires LAN (eth0) — Pi Zeros have no LAN |
 | Traefik | LoadBalancer Service type requires MetalLB, which needs eth0 |
 | ArgoCD application-controller | 512Mi memory limit = entire Pi Zero RAM budget |
-| Ollama | hostPath mount at `/var/lib/longhorn/ollama-models` on USB drive |
-| Open WebUI | 1536Mi memory limit — too heavy for Pi Zero |
-| Prometheus | High cardinality scrape; remote-write persistence |
+| VictoriaMetrics | PVC on USB drive via local-path; 256Mi limit |
+| Gatus | Needs LAN access for Pi-hole / k3s API checks; PVC on USB drive |
 
 All controller-pinned workloads use:
 ```yaml

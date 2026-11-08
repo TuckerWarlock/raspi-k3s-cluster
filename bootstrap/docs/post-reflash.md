@@ -3,6 +3,41 @@
 Complete, ordered steps to rebuild the cluster after reflashing the Pi 4 SD card.
 Run these in sequence — each step depends on the previous one.
 
+> **Have a backup on the USB drive?** `setup-controller.sh` installs a nightly
+> `k3s-backup.timer` that saves the K3s datastore, token, and certs to
+> `/var/lib/longhorn/backups/k3s-YYYY-MM-DD/`. If one exists, follow
+> [Phase 0](#phase-0--restore-k3s-state-from-backup) after step 1.5. The cluster then keeps
+> its old certs and token, so your laptop kubeconfig and the Pi Zero agents keep working.
+
+> **Long-term fix:** the SD card is the weak point on power loss. Boot the Pi 4 from a USB SSD,
+> or add a UPS HAT, so a brown-out doesn't corrupt the root filesystem.
+
+---
+
+## Phase 0 — Restore K3s state from backup
+
+Run this after K3s is installed (1.4) and the USB drive is mounted (1.5). Skip it on a first-ever build.
+
+```bash
+ls -1d /var/lib/longhorn/backups/k3s-*        # pick the newest
+BACKUP=/var/lib/longhorn/backups/k3s-YYYY-MM-DD
+
+sudo systemctl stop k3s
+sudo rm -f /var/lib/rancher/k3s/server/db/state.db*
+sudo rm -rf /var/lib/rancher/k3s/server/tls /var/lib/rancher/k3s/server/cred
+sudo cp "$BACKUP/state.db" /var/lib/rancher/k3s/server/db/state.db
+sudo cp "$BACKUP/token"    /var/lib/rancher/k3s/server/token
+sudo tar -xzf "$BACKUP/tls-cred.tar.gz" -C /var/lib/rancher/k3s/server
+sudo systemctl start k3s
+
+kubectl get nodes          # old nodes + workloads reappear
+```
+
+After a restore, skip 1.5 (kubeconfig refresh), Phase 2.4–2.5, and Phase 5: the token and
+CA are unchanged. Phase 3.1 (local-path config) and 3.5 (TLS secret) are also restored from the datastore.
+
+Test a backup by hand: `sudo systemctl start k3s-backup.service && ls /var/lib/longhorn/backups/`.
+
 ---
 
 ## Phase 1 — Pi 4 First Boot
@@ -34,7 +69,7 @@ sudo reboot
 
 ### 1.3 — Run setup-controller.sh
 
-Clones the repo and configures the controller (swap, sysctl, ClusterHAT):
+Clones the repo and configures the controller (swap, sysctl, ClusterHAT, nightly K3s backup timer):
 
 ```bash
 git clone https://github.com/TuckerWarlock/raspi-k3s-cluster.git ~/raspi-k3s-cluster
@@ -54,8 +89,8 @@ sudo bash bootstrap/scripts/install-k3s-server.sh
 
 ### 1.5 — Re-mount the USB drive
 
-The 32 GB USB flash drive holds the K3s containerd image cache, local-path PVC data, and
-Ollama model files. It survives a reflash but the fstab entries and systemd drop-in must
+The 32 GB USB flash drive holds the K3s containerd image cache, and local-path PVC data
+(plus the nightly K3s backups). It survives a reflash but the fstab entries and systemd drop-in must
 be recreated.
 
 ```bash
@@ -226,7 +261,7 @@ kubectl get configmap local-path-config -n kube-system \
 
 ### 3.2 — Run helmfile sync (ArgoCD only)
 
-`helmfile sync` now installs **only ArgoCD** — MetalLB, Traefik, and Longhorn are
+`helmfile sync` now installs **only ArgoCD**. MetalLB, Traefik, and everything else are
 deployed and managed by ArgoCD after the root Application is applied.
 
 ```bash
@@ -258,9 +293,9 @@ defined there. ArgoCD will now install (in roughly this order, automatically):
 | `metallb-config` | IPAddressPool + L2Advertisement | `metallb-system` |
 | `traefik` | Traefik ingress controller | `traefik` |
 | `argocd-config` | ArgoCD ingress (`argocd.cluster.local`) | `argocd` |
-| `prometheus` | Prometheus + node-exporter | `monitoring` |
-| `loki` | Loki log aggregation | `monitoring` |
-| `promtail` | Promtail log shipping | `monitoring` |
+| `victoria-metrics` | VictoriaMetrics single-node (`vm.cluster.local`) | `monitoring` |
+| `workloads` | App-of-apps for `cluster/argocd/workloads/` | `argocd` |
+| `gatus` | Gatus status page (`status.cluster.local`) | `gatus` |
 
 > **`metallb-config` will retry automatically** — it applies the IP pool only after MetalLB
 > CRDs are ready. `argocd-config` (the ingress) becomes active once Traefik is up.
@@ -310,9 +345,14 @@ If the Traefik IP has changed or this is a fresh laptop:
 ```bash
 # Replace 192.168.1.241 with your actual Traefik EXTERNAL-IP if different
 echo "192.168.1.241 argocd.cluster.local" | sudo tee -a /etc/hosts
-echo "192.168.1.241 prometheus.cluster.local" | sudo tee -a /etc/hosts
-echo "192.168.1.241 grafana.cluster.local" | sudo tee -a /etc/hosts
-echo "192.168.1.241 monday.cluster.local" | sudo tee -a /etc/hosts
+echo "192.168.1.241 vm.cluster.local" | sudo tee -a /etc/hosts
+echo "192.168.1.241 status.cluster.local" | sudo tee -a /etc/hosts
+```
+
+> Better: add these as Local DNS records on the Pi-hole so every device (including phones)
+> resolves `*.cluster.local` without editing hosts files.
+
+```bash
 ```
 
 ---

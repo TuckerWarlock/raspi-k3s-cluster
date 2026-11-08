@@ -1,7 +1,7 @@
 # Memory Management & OOM Prevention
 
-The Pi 4 controller runs everything — K3s control plane, ArgoCD, Longhorn, Traefik,
-MetalLB, and the full monitoring/logging stack. At ~3.5GB combined peak, there's
+The Pi 4 controller runs everything — K3s control plane, Traefik,
+MetalLB, VictoriaMetrics, and Gatus (most ArgoCD components run on the Pi Zeros). There's
 little headroom on 4GB. This document explains how the cluster is protected from
 memory-induced crashes and how to deploy new workloads safely.
 
@@ -106,16 +106,13 @@ Approximate steady-state peak usage across all system components:
 |----------|----------|
 | OS / kernel / systemd | ~200MB (reserved: 512MB) |
 | K3s control plane pods | ~500MB |
-| Longhorn | ~350MB |
 | Traefik + MetalLB | ~100MB |
-| ArgoCD | ~350MB |
-| Prometheus | ~350MB |
-| Loki | ~100MB |
-| Promtail (controller) | ~32MB |
-| **Total (approx)** | **~2.0GB** |
-| **Headroom to soft eviction** | **~0.5GB** |
+| ArgoCD application-controller | ~256MB |
+| VictoriaMetrics | ~128–256MB |
+| Gatus | ~32–64MB |
+| **Total (approx)** | **~1.3GB** (estimate; replace with `kubectl top nodes` after the rebuild) |
 
-This leaves ~1.3GB before kubelet soft eviction starts. That's the budget for
+This leaves ~1.5GB before kubelet soft eviction starts. That's the budget for
 application workloads deployed on the controller, and for burst spikes.
 
 ---

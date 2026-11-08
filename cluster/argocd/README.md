@@ -14,14 +14,12 @@ argocd/
 ├── addons/                     # System services on pi4controller
 │   ├── kustomization.yaml
 │   ├── metallb.yaml            # MetalLB Application
+│   ├── metallb-config.yaml     # IPAddressPool + L2Advertisement
 │   ├── traefik.yaml            # Traefik Application
-│   ├── longhorn.yaml           # Longhorn Application
-│   ├── prometheus.yaml         # Prometheus Application
-│   ├── grafana.yaml            # Grafana Application
-│   └── docs/                   # Setup documentation for monitoring addons
-│       ├── INDEX.md
-│       ├── prometheus.md
-│       └── grafana.md
+│   ├── victoria-metrics.yaml   # VictoriaMetrics Application
+│   ├── argocd-config.yaml      # ArgoCD ingress
+│   ├── workloads.yaml          # App-of-apps for workloads/
+│   └── docs/INDEX.md
 └── workloads/                  # User applications (pi zero workers)
     ├── kustomization.yaml
     └── (add your apps here)
@@ -50,8 +48,8 @@ This creates the root Application, which includes all controller-addons and work
 ArgoCD will automatically deploy:
 - **MetalLB** (speaker pinned to pi4controller)
 - **Traefik** (ingress, pinned to pi4controller)
-- **Longhorn** (storage manager on controller, CSI on all nodes)
-- **Monitoring** (Prometheus + Grafana, pinned to pi4controller)
+- **VictoriaMetrics** (metrics, pinned to pi4controller)
+- **Gatus** (status page, via the `workloads` app)
 
 ### Step 3: Monitor in ArgoCD UI
 
@@ -99,7 +97,7 @@ Commit and push. ArgoCD will auto-sync within seconds.
 
 ## Separation Strategy
 
-- **addons/** — system infrastructure (MetalLB, Traefik, Longhorn, Prometheus, Grafana)
+- **addons/** — system infrastructure (MetalLB, Traefik, VictoriaMetrics)
   - All pinned to `pi4controller` via nodeSelector
   - Resources reserved for cluster health
   
