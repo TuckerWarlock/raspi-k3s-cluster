@@ -59,6 +59,19 @@ The server's probes start after 60s because the Zeros are slow to start it.
 4. Run `./local_ci.sh`, then push. Deploy one app at a time —
    [memory-management.md → Safe Deployment Procedure](memory-management.md#safe-deployment-procedure).
 
+## Never delete an app to "reset" it
+
+Deleting an Application in the ArgoCD UI or CLI (default: *foreground* cascade) deletes
+**everything it manages** — namespace, PVCs, and any Secrets you created by hand in that
+namespace. For ntfy that wipes its users and tokens and the `ntfy-tls` cert; for Gatus and
+VictoriaMetrics it wipes their history.
+
+- To re-sync: refresh (`argocd.argoproj.io/refresh=hard`) or **Sync** in the UI.
+- To hand a hand-applied app over to `main` (as after testing from a branch): do nothing —
+  the `workloads` app adopts an Application with the same name on its next sync.
+- If you really must remove the Application but keep its resources, use the UI's
+  **Non-cascading** delete option.
+
 ## Day-to-day commands
 
 ```bash

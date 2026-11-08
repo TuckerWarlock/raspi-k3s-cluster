@@ -363,10 +363,22 @@ kubectl -n ntfy exec -it deploy/ntfy -- ntfy user add --role=admin warl0ck
 
 kubectl -n ntfy exec deploy/ntfy -- env NTFY_PASSWORD="$(openssl rand -base64 24)" ntfy user add gatus
 kubectl -n ntfy exec deploy/ntfy -- ntfy access gatus cluster-status write-only
-kubectl -n ntfy exec deploy/ntfy -- ntfy token add gatus          # prints tk_…
-kubectl -n gatus create secret generic gatus-ntfy --from-literal=NTFY_TOKEN=tk_…
+TOKEN=$(kubectl -n ntfy exec deploy/ntfy -- ntfy token add gatus | grep -o 'tk_[a-z0-9]*')
+kubectl -n gatus create secret generic gatus-ntfy --from-literal=NTFY_TOKEN="$TOKEN" \
+  --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n gatus rollout restart deploy/gatus                    # pick up the token
 ```
+
+> ntfy's users and tokens live only on its PVC. If the PVC or the `ntfy` namespace is ever
+> deleted (e.g. by deleting the app in ArgoCD), redo this step: the cert secret, both users,
+> a new token in `gatus-ntfy`, and re-add the login on the phone. To replace the Gatus token
+> without printing it:
+> ```bash
+> TOKEN=$(kubectl -n ntfy exec deploy/ntfy -- ntfy token add gatus | grep -o 'tk_[a-z0-9]*')
+> kubectl -n gatus create secret generic gatus-ntfy --from-literal=NTFY_TOKEN="$TOKEN" \
+>   --dry-run=client -o yaml | kubectl apply -f -
+> kubectl -n gatus rollout restart deploy/gatus
+> ```
 
 Test it from the laptop (use your own login):
 
@@ -376,11 +388,18 @@ curl -u warl0ck -d "test from the cluster" https://ntfy.home.arpa/cluster-status
 
 **On the iPhone:**
 
-1. **Trust the mkcert CA.** AirDrop `"$(mkcert -CAROOT)/rootCA.pem"` from the laptop to the
-   phone → **Settings → Profile Downloaded → Install** → then **Settings → General → About →
-   Certificate Trust Settings** → turn on full trust for the mkcert root.
-   This lets the phone trust *any* certificate that CA signs — keep `rootCA-key.pem` on the
-   laptop private.
+1. **Trust the mkcert root CA** — the CA, *not* the `ntfy.home.arpa.pem` server cert:
+   ```bash
+   cp "$(mkcert -CAROOT)/rootCA.pem" ~/Desktop/mkcert-rootCA.pem   # AirDrop this file
+   ```
+   On the phone: **Settings → Profile Downloaded → Install**. The profile must be named
+   **mkcert warl0ck@…** with *Subject: mkcert development CA*. Then **Settings → General →
+   About → Certificate Trust Settings** → turn on full trust for it.
+   If the profile is named `ntfy.home.arpa`, or there's no full-trust switch, you sent the
+   server cert — remove that profile and send `mkcert-rootCA.pem`. Check with Safari:
+   `https://ntfy.home.arpa` must load without a warning.
+   Trusting the root lets the phone trust *any* certificate it signs — never send
+   `rootCA-key.pem`, and keep it on the laptop.
 2. **ntfy app:** **Settings → Users → Add** for `https://ntfy.home.arpa` with your login.
    Then **+ → Use another server** → `https://ntfy.home.arpa`, topic `cluster-status`.
 3. Re-run the `curl` test — the notification should arrive within a few seconds.
