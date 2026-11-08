@@ -74,6 +74,24 @@ data:
         conditions:
           - "[STATUS] == 200"
 
+      - name: vmalert
+        group: cluster
+        url: "http://vmalert-victoria-metrics-alert-server.monitoring.svc:8880/health"
+        interval: 1m
+        alerts:
+          - type: ntfy
+        conditions:
+          - "[STATUS] == 200"
+
+      - name: alertmanager
+        group: cluster
+        url: "http://vmalert-victoria-metrics-alert-alertmanager.monitoring.svc:9093/-/healthy"
+        interval: 1m
+        alerts:
+          - type: ntfy
+        conditions:
+          - "[STATUS] == 200"
+
       - name: ntfy
         group: cluster
         url: "http://ntfy.ntfy.svc/v1/health"
