@@ -422,18 +422,27 @@ kubectl -n monitoring create secret generic alertmanager-ntfy --from-literal=tok
 kubectl -n monitoring rollout restart deploy/vmalert-victoria-metrics-alert-alertmanager
 ```
 
-Test the whole path by sending a fake alert straight to Alertmanager — it should reach the
-phone within ~30 seconds, and a "resolved" follow-up ~5 minutes later:
+Test the whole path by sending a fake alert straight to Alertmanager, from inside its pod (a
+backgrounded `port-forward` races the request and fails silently). It should reach the phone
+~30 seconds later (`group_wait`), with a "resolved" follow-up ~5 minutes after it ends:
 
 ```bash
-kubectl -n monitoring port-forward svc/vmalert-victoria-metrics-alert-alertmanager 9093:9093 &
-curl -s -XPOST localhost:9093/api/v2/alerts -H 'Content-Type: application/json' -d '[{
-  "labels": {"alertname": "TestAlert", "severity": "warning", "instance": "test"},
-  "annotations": {"summary": "Test alert from Alertmanager"},
-  "endsAt": "'"$(date -u -v+1M +%FT%TZ 2>/dev/null || date -u -d '+1 min' +%FT%TZ)"'"
-}]'
-kill %1
+END=$(date -u -v+2M +%FT%TZ 2>/dev/null || date -u -d '+2 min' +%FT%TZ)   # macOS || Linux
+kubectl -n monitoring exec deploy/vmalert-victoria-metrics-alert-alertmanager -- \
+  wget -qO- --header 'Content-Type: application/json' \
+  --post-data "[{\"labels\":{\"alertname\":\"TestAlert\",\"severity\":\"warning\",\"instance\":\"test\"},\"annotations\":{\"summary\":\"Test alert from Alertmanager\"},\"endsAt\":\"$END\"}]" \
+  127.0.0.1:9093/api/v2/alerts
 ```
+
+No notification? Check whether Alertmanager sent it and why it failed:
+
+```bash
+kubectl -n monitoring exec deploy/vmalert-victoria-metrics-alert-alertmanager -- \
+  wget -qO- 127.0.0.1:9093/metrics | grep -E '^alertmanager_notifications(_failed)?_total.*webhook' | grep -v ' 0$'
+```
+
+`notifications_total` should go to 1 with no `failed` lines; `reason="authError"` or
+`clientError` usually means the `alertmanager-ntfy` token is missing or wrong.
 
 ---
 
