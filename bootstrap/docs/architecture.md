@@ -88,14 +88,14 @@ K3s's bundled Traefik and ServiceLB are **disabled** (`--disable traefik --disab
 | **VictoriaMetrics** | Metrics storage + scraping (single-node) | ArgoCD (Helm, OCI) | controller |
 | **Gatus** | Status page and uptime checks | ArgoCD (manifests) | controller |
 | **ntfy** | Push notifications to the iPhone (`ntfy.home.arpa`) | ArgoCD (manifests) | controller |
+| **vmalert + Alertmanager** | Memory/scrape alert rules → ntfy | ArgoCD (Helm, OCI) | controller |
 
 ### Planned
 
 | Component | Purpose | Notes |
 |-----------|---------|-------|
-| **vmalert** | Alert rules on VictoriaMetrics | Brings back the old memory-pressure alerts |
 | **WireGuard / Tailscale** | Remote access | |
-| **SOPS + age** | Encrypted secrets in Git | Not set up — today's secrets (`cluster-local-tls`, `ntfy-tls`, `gatus-ntfy`) are created by hand |
+| **SOPS + age** | Encrypted secrets in Git | Not set up — today's secrets (`cluster-local-tls`, `ntfy-tls`, `gatus-ntfy`, `alertmanager-ntfy`) are created by hand |
 | **Cilium + Hubble** | eBPF CNI + network observability | Replaces Flannel; install K3s with `--flannel-backend=none` |
 | **cert-manager** | Let's Encrypt certificates | Deferred — the mkcert wildcard works for a homelab |
 

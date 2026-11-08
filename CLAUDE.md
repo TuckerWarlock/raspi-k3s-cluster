@@ -7,8 +7,9 @@ from `main`, so **merging to `main` deploys to the live cluster**.
 ## Current state
 
 - **Running:** K3s v1.37, MetalLB, Traefik (chart 42.x), ArgoCD v3.6 (chart 10.x),
-  VictoriaMetrics single-node, Gatus, ntfy.
-- **Planned:** vmalert (memory alerts via ntfy), then WireGuard / Tailscale.
+  VictoriaMetrics single-node, vmalert + Alertmanager, Gatus, ntfy (alerts from both land on
+  the `cluster-status` topic).
+- **Planned:** WireGuard / Tailscale.
 - **Removed:** Longhorn (too heavy; using K3s local-path), Prometheus/Grafana/Loki (replaced by
   VictoriaMetrics), Monday/Ollama (LLM inference too slow on the Pi 4 CPU).
 
@@ -146,6 +147,8 @@ their own commit so they can be pushed one at a time.
 
 - `/boot/firmware/cmdline.txt` must stay a **single line** — a second line stops the Pi booting.
 - Always `clusterctrl off` before rebooting or unplugging the Pi 4.
-- Never commit secrets. Today's secrets — `cluster-local-tls`, `ntfy-tls`, `gatus-ntfy` — and
+- Never commit secrets. Today's secrets — `cluster-local-tls`, `ntfy-tls`, `gatus-ntfy`,
+  `alertmanager-ntfy` — and
   ntfy's users/tokens are created by hand ([rebuild.md 3.5](bootstrap/docs/rebuild.md#35--create-the-tls-secret-for-clusterlocal),
-  [3.8](bootstrap/docs/rebuild.md#38--set-up-ntfy-certificate-users-gatus-token-iphone)).
+  [3.8](bootstrap/docs/rebuild.md#38--set-up-ntfy-certificate-users-gatus-token-iphone),
+  [3.9](bootstrap/docs/rebuild.md#39--give-alertmanager-an-ntfy-token)).

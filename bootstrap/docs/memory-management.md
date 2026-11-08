@@ -87,7 +87,8 @@ Requests should reflect real steady-state usage. Current settings and measured u
 | MetalLB speaker / controller | pi4controller | 64Mi / 32Mi | 128Mi / 128Mi | ~50Mi / ~30Mi |
 | Traefik | pi4controller | 64Mi | 128Mi | ~25Mi |
 | Gatus | pi4controller | 32Mi | 64Mi | ~10Mi |
-| ntfy | pi4controller | 32Mi | 64Mi | not yet measured |
+| ntfy | pi4controller | 32Mi | 64Mi | ~15Mi |
+| vmalert / Alertmanager | pi4controller | 32Mi / 32Mi | 64Mi / 64Mi | not yet measured |
 | ArgoCD server | Pi Zero | 128Mi | 256Mi | ~65–100Mi |
 | ArgoCD repo-server | Pi Zero | 128Mi | 384Mi | ~65–115Mi |
 | ArgoCD redis | Pi Zero | 32Mi | 128Mi | ~20Mi |
@@ -146,10 +147,21 @@ stop and investigate before deploying anything new.
 **Service health:** Gatus sends a push to the `cluster-status` ntfy topic when any check fails
 3 times in a row (~3 minutes), and again when it recovers (`workloads/gatus/configmap.yaml`).
 
-**Memory pressure:** not alerted yet. The old Prometheus rules (node above 75% for 2m, under
-400Mi available for 1m, container above 90% of its limit for 5m — in git history at
-`d8cf5eb^:cluster/monitoring/prometheus/prometheus-config.yaml`) are planned to come back via
-`vmalert`, also notifying through ntfy.
+**Memory and scraping:** vmalert evaluates these rules every minute against VictoriaMetrics;
+Alertmanager pushes firing and resolved alerts to the same ntfy topic
+(`cluster/monitoring/vmalert/values.yaml`):
+
+| Alert | Fires when | Severity |
+|---|---|---|
+| `ControllerMemoryLow` | pi4controller has under 800Mi available for 2m (soft eviction is at 512Mi) | critical |
+| `WorkerMemoryLow` | a Pi Zero has under 120Mi available for 5m (hard eviction is at 100Mi) | warning |
+| `ContainerNearMemoryLimit` | a container is above 90% of its memory limit for 10m | warning |
+| `ContainerOOMKilled` | a container was OOM-killed in the last 15m | warning |
+| `ScrapeTargetDown` | a VictoriaMetrics scrape target is down for 10m | warning |
+
+"Available" is `machine_memory_bytes` minus the root cgroup's working set — the same number
+the kubelet uses for eviction. Alertmanager groups by alert and node, and re-sends a still-firing
+alert every 12h.
 
 Until then, check by hand: `kubectl top nodes`, or query VictoriaMetrics at
 `https://vm.cluster.local/vmui`.

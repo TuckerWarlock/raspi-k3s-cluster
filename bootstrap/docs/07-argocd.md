@@ -22,6 +22,7 @@ cluster/argocd/
     ├── metallb-config.yaml      # cluster/core-system/metallb/config/
     ├── traefik.yaml             # Helm chart
     ├── victoria-metrics.yaml    # Helm chart (OCI)
+    ├── vmalert.yaml             # Helm chart (OCI) — vmalert + Alertmanager
     ├── argocd-config.yaml       # cluster/argocd/config/ — ArgoCD ingress + OCI repo secret
     └── workloads.yaml           # → watches cluster/argocd/workloads/
                                  #     └── gatus.yaml → workloads/gatus/

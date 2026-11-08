@@ -61,7 +61,7 @@ raspi-k3s-cluster/
 │   ├── core-system/
 │   │   ├── metallb/                # values.yaml + config/ (IP pool, L2 advertisement)
 │   │   └── traefik/                # values.yaml
-│   └── monitoring/                 # namespace + victoria-metrics/values.yaml
+│   └── monitoring/                 # namespace + victoria-metrics/ and vmalert/ values
 │
 ├── workloads/                      # Applications (deployed by ArgoCD)
 │   ├── gatus/                      # Status page → status.cluster.local
@@ -91,7 +91,7 @@ raspi-k3s-cluster/
 - [MetalLB](https://metallb.universe.tf/) — bare-metal load balancer
 - [Traefik](https://traefik.io/) — ingress controller
 - [ArgoCD](https://argoproj.github.io/cd/) — GitOps continuous deployment
-- [VictoriaMetrics](https://victoriametrics.com/) — metrics storage + scraping (Prometheus-compatible)
+- [VictoriaMetrics](https://victoriametrics.com/) — metrics storage + scraping (Prometheus-compatible), plus vmalert + Alertmanager for alert rules
 - [Gatus](https://gatus.io/) — uptime/status checks at `status.cluster.local`
 - [ntfy](https://ntfy.sh/) — self-hosted push notifications at `ntfy.home.arpa`
 
