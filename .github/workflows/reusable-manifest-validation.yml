@@ -52,7 +52,7 @@ jobs:
       - name: Validate manifests with kubeconform
         if: ${{ inputs.validator == 'kubeconform' }}
         run: |
-          find cluster -type f \( -name "*.yaml" -o -name "*.yml" \) \
+          find cluster workloads -type f \( -name "*.yaml" -o -name "*.yml" \) \
             ! -name "values.yaml" \
             ! -name "*-values.yaml" \
             ! -path "*/patches/*" \
@@ -82,6 +82,11 @@ jobs:
             --output wide \
             --target-versions "k8s=${{ inputs.k8s_target_version }}" \
             -d cluster
+
+          pluto detect-files \
+            --output wide \
+            --target-versions "k8s=${{ inputs.k8s_target_version }}" \
+            -d workloads
 
           pluto detect-files \
             --output wide \

@@ -37,11 +37,11 @@ This directory contains validation-only CI workflows. They do not connect to a l
 3. Render all Helm releases from `helmfile.yaml` using `helmfile template > /tmp/all-rendered.yaml`.
 4. For `kubeconform` job:
 	 - Install tools using `yokawasa/action-setup-kube-tools`.
-	 - Validate raw manifests under `cluster/` (excluding `values.yaml`).
+	 - Validate raw manifests under `cluster/` and `workloads/` (excluding `values.yaml` and `patches/`).
 	 - Validate rendered Helm manifests in strict mode.
 5. For `pluto` job:
 	 - Install Pluto using `FairwindsOps/pluto/github-action@master`.
-	 - Check both raw manifests and rendered manifests for deprecated/removed APIs.
+	 - Check raw manifests (`cluster/`, `workloads/`) and rendered manifests for deprecated/removed APIs.
 
 ## Trigger Conditions
 
@@ -51,16 +51,23 @@ This directory contains validation-only CI workflows. They do not connect to a l
 	- `bootstrap/scripts/**`
 	- `local_ci.sh`
 	- `.github/workflows/shellcheck.yml`
+- `push` to `main`
 - `workflow_dispatch` for manual runs
 
 `helm-validate.yml` runs on:
 
 - `pull_request` to `main` when files change in:
 	- `cluster/**`
-	- `bootstrap/scripts/install-argocd.sh`
+	- `workloads/**`
+	- `helmfile.yaml`
 	- `.github/workflows/helm-validate.yml`
 	- `.github/workflows/reusable-manifest-validation.yml`
+- `push` to `main`
 - `workflow_dispatch` for manual runs
+
+> Helm charts referenced by ArgoCD Applications (MetalLB, Traefik, VictoriaMetrics) are not
+> rendered in CI — only `helmfile.yaml` (ArgoCD) is. Render those locally with `helm template`
+> when bumping a chart version.
 
 ## Version Pinning
 

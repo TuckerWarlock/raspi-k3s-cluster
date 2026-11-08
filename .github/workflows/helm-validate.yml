@@ -5,7 +5,8 @@ on:
     branches: [main]
     paths:
       - "cluster/**"
-      - "bootstrap/scripts/install-argocd.sh"
+      - "workloads/**"
+      - "helmfile.yaml"
       - ".github/workflows/helm-validate.yml"
       - ".github/workflows/reusable-manifest-validation.yml"
   push:
