@@ -146,8 +146,8 @@ kubectl get nodes          # old nodes + workloads reappear
 ```
 
 After a restore the token and CA are unchanged, so: skip 1.7, skip 2.4–2.5 if the Pi Zero
-SD cards weren't reflashed, and skip 3.2–3.5 (ArgoCD, its apps, the local-path config, and
-the TLS secret all live in the restored datastore). Continue at [Phase 4](#phase-4--verify).
+SD cards weren't reflashed, and skip 3.2–3.5 and 3.8 (ArgoCD, its apps, the local-path config, and
+the TLS secrets all live in the restored datastore; ntfy's users live on its USB-backed PVC). Continue at [Phase 4](#phase-4--verify).
 
 > Restore is not yet tested on hardware. Test a backup by hand any time:
 > `sudo systemctl start k3s-backup.service && ls /mnt/usb/backups/`.
@@ -294,6 +294,7 @@ ArgoCD then deploys, roughly in this order:
 | `victoria-metrics` | VictoriaMetrics single-node | `monitoring` |
 | `workloads` | App-of-apps for `cluster/argocd/workloads/` | `argocd` |
 | `gatus` | Gatus status page | `gatus` |
+| `ntfy` | ntfy push-notification server | `ntfy` |
 
 All should reach `Synced` + `Healthy` within ~10 minutes, and Traefik gets
 `EXTERNAL-IP 192.168.1.241` (`kubectl get svc -n traefik`). Anything stuck on `Unknown`,
@@ -315,16 +316,23 @@ Until the secret exists, Traefik serves its built-in self-signed cert.
 
 ### 3.6 — Resolve the hostnames
 
-Add **Local DNS records on the Pi-hole** (every device, including phones, then resolves
-them), all pointing to `192.168.1.241`:
+Add **Local DNS records on the Pi-hole** (every device then resolves them), all pointing to
+`192.168.1.241`:
 
-`argocd.cluster.local`, `vm.cluster.local`, `status.cluster.local`, `traefik.cluster.local`
+`argocd.cluster.local`, `vm.cluster.local`, `status.cluster.local`, `traefik.cluster.local`,
+`ntfy.home.arpa`
 
 Or, per laptop, `/etc/hosts`:
 
 ```bash
 for h in argocd vm status traefik; do echo "192.168.1.241 $h.cluster.local" | sudo tee -a /etc/hosts; done
+echo "192.168.1.241 ntfy.home.arpa" | sudo tee -a /etc/hosts
 ```
+
+> **iPhones don't resolve `.local` names through the Pi-hole** — iOS sends them to mDNS
+> (Bonjour) only. That's why ntfy, the one service the phone needs, is on `ntfy.home.arpa`
+> (the name space reserved for home networks, RFC 8375). The `*.cluster.local` sites work
+> from the laptop.
 
 ### 3.7 — Log in to ArgoCD
 
@@ -334,6 +342,51 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 
 Open `https://argocd.cluster.local`, log in as `admin`, then change the password
 (**Settings → User Info → Update Password**).
+
+### 3.8 — Set up ntfy (certificate, users, Gatus token, iPhone)
+
+ntfy's config is in Git, but its TLS cert, users, and tokens aren't. **On your laptop**, in
+the mkcert folder from 3.5:
+
+```bash
+mkcert ntfy.home.arpa
+kubectl create secret tls ntfy-tls \
+  --cert=ntfy.home.arpa.pem --key=ntfy.home.arpa-key.pem -n ntfy
+```
+
+Create your user (prompts for a password) and a write-only user + token for Gatus. Users and
+tokens are stored in `auth.db` on ntfy's USB-backed PVC:
+
+```bash
+kubectl -n ntfy exec -it deploy/ntfy -- ntfy user add --role=admin warl0ck
+
+kubectl -n ntfy exec deploy/ntfy -- env NTFY_PASSWORD="$(openssl rand -base64 24)" ntfy user add gatus
+kubectl -n ntfy exec deploy/ntfy -- ntfy access gatus cluster-status write-only
+kubectl -n ntfy exec deploy/ntfy -- ntfy token add gatus          # prints tk_…
+kubectl -n gatus create secret generic gatus-ntfy --from-literal=NTFY_TOKEN=tk_…
+kubectl -n gatus rollout restart deploy/gatus                    # pick up the token
+```
+
+Test it from the laptop (use your own login):
+
+```bash
+curl -u warl0ck -d "test from the cluster" https://ntfy.home.arpa/cluster-status
+```
+
+**On the iPhone:**
+
+1. **Trust the mkcert CA.** AirDrop `"$(mkcert -CAROOT)/rootCA.pem"` from the laptop to the
+   phone → **Settings → Profile Downloaded → Install** → then **Settings → General → About →
+   Certificate Trust Settings** → turn on full trust for the mkcert root.
+   This lets the phone trust *any* certificate that CA signs — keep `rootCA-key.pem` on the
+   laptop private.
+2. **ntfy app:** **Settings → Users → Add** for `https://ntfy.home.arpa` with your login.
+   Then **+ → Use another server** → `https://ntfy.home.arpa`, topic `cluster-status`.
+3. Re-run the `curl` test — the notification should arrive within a few seconds.
+
+Push reaches the phone through ntfy.sh (only the message ID passes through it), but the app
+then fetches the message from `ntfy.home.arpa`, so **notifications only arrive while the
+phone is on the home network** — until WireGuard/Tailscale is set up.
 
 ---
 

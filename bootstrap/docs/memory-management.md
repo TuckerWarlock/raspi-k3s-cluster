@@ -87,6 +87,7 @@ Requests should reflect real steady-state usage. Current settings and measured u
 | MetalLB speaker / controller | pi4controller | 64Mi / 32Mi | 128Mi / 128Mi | ~50Mi / ~30Mi |
 | Traefik | pi4controller | 64Mi | 128Mi | ~25Mi |
 | Gatus | pi4controller | 32Mi | 64Mi | ~10Mi |
+| ntfy | pi4controller | 32Mi | 64Mi | not yet measured |
 | ArgoCD server | Pi Zero | 128Mi | 256Mi | ~65–100Mi |
 | ArgoCD repo-server | Pi Zero | 128Mi | 384Mi | ~65–115Mi |
 | ArgoCD redis | Pi Zero | 32Mi | 128Mi | ~20Mi |

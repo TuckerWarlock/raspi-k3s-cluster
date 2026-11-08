@@ -5,3 +5,4 @@ kind: Kustomization
 # Add an Application manifest here for each new workload.
 resources:
   - gatus.yaml
+  - ntfy.yaml

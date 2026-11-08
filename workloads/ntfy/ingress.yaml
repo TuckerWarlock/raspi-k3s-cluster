@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ntfy
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+spec:
+  ingressClassName: traefik
+  # ntfy.home.arpa isn't covered by the *.cluster.local default cert. ntfy-tls is a
+  # mkcert cert for this host, created by hand (bootstrap/docs/rebuild.md step 3.8).
+  tls:
+    - hosts:
+        - ntfy.home.arpa
+      secretName: ntfy-tls
+  rules:
+  - host: ntfy.home.arpa
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ntfy
+            port:
+              number: 80

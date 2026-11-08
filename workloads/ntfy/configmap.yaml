@@ -1,0 +1,29 @@
+# ntfy server config. Users and access tokens are NOT in Git — they're created with the
+# ntfy CLI inside the pod and stored in auth.db on the PVC (see bootstrap/docs/rebuild.md,
+# step 3.8).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ntfy-config
+data:
+  server.yml: |
+    # Must match the URL the phone uses. *.home.arpa, not *.cluster.local: iOS resolves
+    # .local names only over mDNS (Bonjour), so a Pi-hole record for them never gets used.
+    base-url: "https://ntfy.home.arpa"
+    listen-http: ":8080"
+    # Traefik sits in front; use X-Forwarded-For so rate limits are per client
+    behind-proxy: true
+
+    cache-file: "/var/lib/ntfy/cache.db"
+    cache-duration: "24h"
+
+    auth-file: "/var/lib/ntfy/auth.db"
+    # Nothing is readable or writable without a login or token
+    auth-default-access: "deny-all"
+
+    # iOS can only receive push via Apple's servers. ntfy.sh relays a "poll request"
+    # carrying just the message ID; the app then fetches the message from this server.
+    upstream-base-url: "https://ntfy.sh"
+
+    enable-metrics: true
+    metrics-listen-http: ":9090"

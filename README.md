@@ -64,7 +64,8 @@ raspi-k3s-cluster/
 │   └── monitoring/                 # namespace + victoria-metrics/values.yaml
 │
 ├── workloads/                      # Applications (deployed by ArgoCD)
-│   └── gatus/                      # Status page → status.cluster.local
+│   ├── gatus/                      # Status page → status.cluster.local
+│   └── ntfy/                       # Push notifications → ntfy.home.arpa
 │
 ├── CLAUDE.md                       # Instructions for AI assistants (Copilot's file points here)
 ├── helmfile.yaml                   # Bootstraps ArgoCD only
@@ -92,6 +93,7 @@ raspi-k3s-cluster/
 - [ArgoCD](https://argoproj.github.io/cd/) — GitOps continuous deployment
 - [VictoriaMetrics](https://victoriametrics.com/) — metrics storage + scraping (Prometheus-compatible)
 - [Gatus](https://gatus.io/) — uptime/status checks at `status.cluster.local`
+- [ntfy](https://ntfy.sh/) — self-hosted push notifications at `ntfy.home.arpa`
 
 ### Validation & CI
 - [kubeconform](https://github.com/yannh/kubeconform) — Kubernetes manifest schema validation
