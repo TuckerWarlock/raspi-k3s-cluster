@@ -17,11 +17,30 @@ server:
   extraArgs:
     # Cap internal caches so VM stays inside its 256Mi limit
     memory.allowedBytes: 160MiB
+    # A query touching more series than this fails with an error instead of OOM-killing
+    # the pod (a count() over all ~170k series did exactly that). ~50k remain after the
+    # relabel drops below.
+    search.maxUniqueTimeseries: "60000"
 
   persistentVolume:
     enabled: true
     storageClassName: local-path
     size: 5Gi
+
+  # Drop high-cardinality series nothing here uses, before they're stored. K3s exposes the
+  # whole control plane through the API server endpoint, and its latency histograms were
+  # ~121k of ~170k series (Nov 2026). The _count/_sum series are kept, so average
+  # latencies are still available; only the per-bucket breakdowns go.
+  relabel:
+    enabled: true
+    config:
+      - action: drop
+        source_labels: [__name__]
+        regex: "(apiserver|etcd|scheduler|workqueue|storage_operation|kubelet_runtime_operations|rest_client|authentication|authorization|aggregator|apiextensions|field_validation)_.+_bucket"
+      # Static feature-gate flags (~1.5k series) — check `kubectl get --raw /metrics` instead
+      - action: drop
+        source_labels: [__name__]
+        regex: "kubernetes_feature_enabled"
 
   # Built-in Kubernetes scrape config: API server, kubelet, cAdvisor, and any
   # pod/service annotated prometheus.io/scrape: "true"

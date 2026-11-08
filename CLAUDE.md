@@ -83,6 +83,9 @@ the cluster's Kubernetes version when bumping — see the version-skew entries i
 - **p1–p4:** labelled `node-role.kubernetes.io/worker=worker` and `hardware=pi-zero-2w`.
   ArgoCD server, redis, and repo-server run here. Keep workloads small.
 - **Don't taint the Pi Zeros** — the ArgoCD pods there have no toleration.
+- **VictoriaMetrics** sits close to its 256Mi limit by design. Keep it lean: drop unused series at
+  ingest (`server.relabel` in its values) rather than raising the limit, and never run whole-database
+  queries against it (e.g. `count({__name__=~".+"})`) — one OOM-killed it.
 - **Storage:** `local-path`. On the controller, PVCs go to the USB drive
   (`/mnt/usb/local-path-storage`), which also holds the containerd images and nightly K3s
   backups (`/mnt/usb/backups/`).

@@ -7,6 +7,8 @@ deployed by the ArgoCD Application `cluster/argocd/addons/victoria-metrics.yaml`
 - Runs on pi4controller (128Mi request / 256Mi limit), 14-day retention, 5Gi local-path PVC (USB drive).
 - Uses the chart's built-in scrape config: API server, kubelet, cAdvisor, and any pod/service annotated
   `prometheus.io/scrape: "true"`.
+- Drops K3s control-plane latency histogram buckets at ingest (~121k series nothing uses) and caps a
+  single query at 60k series so a heavy query errors instead of OOM-killing the pod.
 - UI: `https://vm.cluster.local/vmui` (PromQL/MetricsQL).
 
 Alerting: [vmalert + Alertmanager](https://docs.victoriametrics.com/helm/victoria-metrics-alert/),
