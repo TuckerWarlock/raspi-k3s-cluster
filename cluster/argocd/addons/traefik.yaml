@@ -9,7 +9,9 @@ spec:
     # Upstream Helm chart
     - repoURL: https://traefik.github.io/charts
       chart: traefik
-      targetRevision: 39.0.6
+      # 42.x no longer bundles Gateway API CRDs — K3s ships newer ones (v1.6+) and its
+      # safe-upgrades admission policy rejects the chart's older copies.
+      targetRevision: 42.3.1
       helm:
         valueFiles:
           - $values/cluster/core-system/traefik/values.yaml

@@ -1,5 +1,6 @@
 service:
-  type: LoadBalancer
+  spec:
+    type: LoadBalancer
 
 # Pin Traefik to the controller — Pi Zeros don't have enough RAM
 nodeSelector:
@@ -14,9 +15,8 @@ resources:
     cpu: 200m
     memory: 128Mi
 
-logs:
-  access:
-    enabled: true
+accessLog:
+  enabled: true
 
 # Expose the dashboard via IngressRoute on /dashboard
 ingressRoute:

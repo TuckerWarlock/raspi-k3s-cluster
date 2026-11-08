@@ -3,7 +3,7 @@
 # After ArgoCD is running it manages its own Applications from Git.
 #
 # To find available chart values:
-#   helm show values argo/argo-cd --version 7.8.1
+#   helm show values argo/argo-cd --version 10.15.0
 
 # Clear any global nodeSelector from previous deploys so component-level
 # selectors below are the only ones applied (no merging with stale globals).
@@ -89,7 +89,7 @@ notifications:
 
 # ApplicationSet controller is unused — we use plain Application CRDs, not ApplicationSets.
 # Note: applicationSet.enabled is not a valid chart key (silently ignored).
-# Setting replicas: 0 is the correct way to disable this controller in chart 7.8.1.
+# Setting replicas: 0 is the correct way to disable this controller (still true in chart 10.x).
 applicationSet:
   replicas: 0
 
