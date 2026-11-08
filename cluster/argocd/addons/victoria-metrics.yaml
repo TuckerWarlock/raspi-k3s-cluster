@@ -7,7 +7,8 @@ spec:
   project: default
   sources:
     # Upstream Helm chart
-    - repoURL: https://victoriametrics.github.io/helm-charts/
+    # OCI registry (see cluster/argocd/config/repo-victoriametrics-oci.yaml for why)
+    - repoURL: ghcr.io/victoriametrics/helm-charts
       chart: victoria-metrics-single
       targetRevision: 0.50.0
       helm:

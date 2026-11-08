@@ -1,0 +1,15 @@
+# Public OCI Helm registry for VictoriaMetrics charts. Pulling the chart via OCI fetches
+# only the chart (~30KB) instead of the 3.6MB index.yaml, which took the Pi Zero
+# repo-server ~74s — past ArgoCD's 60s manifest-generation deadline.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo-victoriametrics-oci
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: victoriametrics-oci
+  type: helm
+  url: ghcr.io/victoriametrics/helm-charts
+  enableOCI: "true"
