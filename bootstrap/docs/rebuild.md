@@ -146,7 +146,7 @@ kubectl get nodes          # old nodes + workloads reappear
 ```
 
 After a restore the token and CA are unchanged, so: skip 1.7, skip 2.4–2.5 if the Pi Zero
-SD cards weren't reflashed, and skip 3.2–3.5 and 3.8 (ArgoCD, its apps, the local-path config, and
+SD cards weren't reflashed, and skip 3.2–3.5, 3.8, and 3.9 (ArgoCD, its apps, the local-path config, and
 the TLS secrets all live in the restored datastore; ntfy's users live on its USB-backed PVC). Continue at [Phase 4](#phase-4--verify).
 
 > Restore is not yet tested on hardware. Test a backup by hand any time:
@@ -292,6 +292,7 @@ ArgoCD then deploys, roughly in this order:
 | `traefik` | Traefik ingress controller | `traefik` |
 | `argocd-config` | ArgoCD ingress + the VictoriaMetrics OCI repo | `argocd` |
 | `victoria-metrics` | VictoriaMetrics single-node | `monitoring` |
+| `vmalert` | vmalert + Alertmanager (memory alerts → ntfy) | `monitoring` |
 | `workloads` | App-of-apps for `cluster/argocd/workloads/` | `argocd` |
 | `gatus` | Gatus status page | `gatus` |
 | `ntfy` | ntfy push-notification server | `ntfy` |
@@ -387,6 +388,33 @@ curl -u warl0ck -d "test from the cluster" https://ntfy.home.arpa/cluster-status
 Push reaches the phone through ntfy.sh (only the message ID passes through it), but the app
 then fetches the message from `ntfy.home.arpa`, so **notifications only arrive while the
 phone is on the home network** — until WireGuard/Tailscale is set up.
+
+### 3.9 — Give Alertmanager an ntfy token
+
+Alertmanager (part of the `vmalert` app) pushes memory and scrape alerts to the same
+`cluster-status` topic. It needs its own write-only ntfy user and token:
+
+```bash
+kubectl -n ntfy exec deploy/ntfy -- env NTFY_PASSWORD="$(openssl rand -base64 24)" ntfy user add alertmanager
+kubectl -n ntfy exec deploy/ntfy -- ntfy access alertmanager cluster-status write-only
+TOKEN=$(kubectl -n ntfy exec deploy/ntfy -- ntfy token add alertmanager | grep -o 'tk_[a-z0-9]*')
+kubectl -n monitoring create secret generic alertmanager-ntfy --from-literal=token="$TOKEN" \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n monitoring rollout restart deploy/vmalert-victoria-metrics-alert-alertmanager
+```
+
+Test the whole path by sending a fake alert straight to Alertmanager — it should reach the
+phone within ~30 seconds, and a "resolved" follow-up ~5 minutes later:
+
+```bash
+kubectl -n monitoring port-forward svc/vmalert-victoria-metrics-alert-alertmanager 9093:9093 &
+curl -s -XPOST localhost:9093/api/v2/alerts -H 'Content-Type: application/json' -d '[{
+  "labels": {"alertname": "TestAlert", "severity": "warning", "instance": "test"},
+  "annotations": {"summary": "Test alert from Alertmanager"},
+  "endsAt": "'"$(date -u -v+1M +%FT%TZ 2>/dev/null || date -u -d '+1 min' +%FT%TZ)"'"
+}]'
+kill %1
+```
 
 ---
 

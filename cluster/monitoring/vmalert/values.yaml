@@ -1,0 +1,123 @@
+# vmalert evaluates the rules below against VictoriaMetrics and sends firing alerts to
+# Alertmanager, which pushes them to ntfy (topic cluster-status) via ntfy's built-in
+# Alertmanager template. Upstream values:
+#   helm show values oci://ghcr.io/victoriametrics/helm-charts/victoria-metrics-alert --version 0.52.1
+
+server:
+  # Release name is the ArgoCD app name (victoria-metrics), so the Service is
+  # victoria-metrics-victoria-metrics-single-server
+  datasource:
+    url: http://victoria-metrics-victoria-metrics-single-server.monitoring.svc:8428
+
+  # Pin to the controller next to VictoriaMetrics; the Pi Zeros have no RAM to spare
+  nodeSelector:
+    kubernetes.io/hostname: pi4controller
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 64Mi
+
+  # Re-evaluate every minute (default 1m) — matches the 15s/60s scrape cadence fine
+  config:
+    alerts:
+      groups:
+        - name: memory
+          rules:
+            # Kubelet soft-evicts at 512Mi available on the controller; warn well before.
+            # cAdvisor's root cgroup working set is what the kubelet measures.
+            - alert: ControllerMemoryLow
+              expr: |
+                min by (instance) (machine_memory_bytes{instance="pi4controller"})
+                  - min by (instance) (container_memory_working_set_bytes{id="/", instance="pi4controller"})
+                  < 800 * 1024 * 1024
+              for: 2m
+              labels:
+                severity: critical
+              annotations:
+                summary: "pi4controller has {{ $value | humanize1024 }}B memory available"
+                description: "Soft eviction starts at 512Mi. Check kubectl top pods -A --sort-by=memory."
+
+            # Pi Zeros (512MB) idle with 200-300Mi available; the kubelet hard-evicts at 100Mi
+            - alert: WorkerMemoryLow
+              expr: |
+                min by (instance) (machine_memory_bytes{instance=~"p[1-4]"})
+                  - min by (instance) (container_memory_working_set_bytes{id="/", instance=~"p[1-4]"})
+                  < 120 * 1024 * 1024
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: "{{ $labels.instance }} has {{ $value | humanize1024 }}B memory available"
+
+            - alert: ContainerNearMemoryLimit
+              expr: |
+                max by (namespace, pod, container) (container_memory_working_set_bytes{container!="", container!="POD"})
+                  / max by (namespace, pod, container) (container_spec_memory_limit_bytes{container!="", container!="POD"} > 0)
+                  > 0.9
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: "{{ $labels.namespace }}/{{ $labels.container }} is at {{ $value | humanizePercentage }} of its memory limit"
+
+            - alert: ContainerOOMKilled
+              expr: increase(container_oom_events_total{container!=""}[15m]) > 0
+              labels:
+                severity: warning
+              annotations:
+                summary: "{{ $labels.namespace }}/{{ $labels.container }} was OOM-killed"
+
+        - name: scraping
+          rules:
+            - alert: ScrapeTargetDown
+              expr: up == 0
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: "{{ $labels.job }} target {{ $labels.instance }} is down"
+
+alertmanager:
+  enabled: true
+  nodeSelector:
+    kubernetes.io/hostname: pi4controller
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+  # ntfy token for the alertmanager user. Secret created by hand (bootstrap/docs/rebuild.md
+  # step 3.9); optional so the pod starts without it — sends just fail with 403 until then.
+  extraVolumes:
+    - name: ntfy-token
+      secret:
+        secretName: alertmanager-ntfy
+        optional: true
+  extraVolumeMounts:
+    - name: ntfy-token
+      mountPath: /etc/ntfy
+      readOnly: true
+
+  config:
+    route:
+      receiver: ntfy
+      group_by: ["alertname", "instance"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+    receivers:
+      - name: ntfy
+        webhook_configs:
+          # ntfy's built-in template turns the Alertmanager payload into a readable message
+          - url: http://ntfy.ntfy.svc/cluster-status?template=alertmanager
+            send_resolved: true
+            http_config:
+              authorization:
+                type: Bearer
+                credentials_file: /etc/ntfy/token

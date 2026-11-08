@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vmalert
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    # Upstream Helm chart
+    # OCI registry (see cluster/argocd/config/repo-victoriametrics-oci.yaml for why)
+    - repoURL: ghcr.io/victoriametrics/helm-charts
+      chart: victoria-metrics-alert
+      targetRevision: 0.52.1
+      helm:
+        valueFiles:
+          - $values/cluster/monitoring/vmalert/values.yaml
+    # Git ref that provides $values for the valueFiles path above
+    - repoURL: https://github.com/TuckerWarlock/raspi-k3s-cluster
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
