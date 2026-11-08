@@ -6,6 +6,8 @@ resources:
   - metallb.yaml
   - metallb-config.yaml
   - traefik.yaml
+  # Monitoring — VictoriaMetrics single-node (values in cluster/monitoring/victoria-metrics/)
+  - victoria-metrics.yaml
   # ArgoCD own config (ingress, etc.) — managed by ArgoCD
   - argocd-config.yaml
   # User workloads root app — manages cluster/argocd/workloads/

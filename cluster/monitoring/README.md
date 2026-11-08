@@ -1,11 +1,15 @@
 # cluster/monitoring/
 
-Monitoring stack — currently not deployed to conserve memory on pi4controller for AI inference workloads (Monday/Ollama).
+Monitoring stack: [VictoriaMetrics single-node](https://docs.victoriametrics.com/helm/victoria-metrics-single/),
+deployed by the ArgoCD Application `cluster/argocd/addons/victoria-metrics.yaml` with values from
+`victoria-metrics/values.yaml`.
 
-The `namespace.yaml` is retained so the namespace can be recreated if monitoring is re-enabled in the future.
+- Runs on pi4controller (128Mi request / 256Mi limit), 14-day retention, 5Gi local-path PVC (USB drive).
+- Uses the chart's built-in scrape config: API server, kubelet, cAdvisor, and any pod/service annotated
+  `prometheus.io/scrape: "true"`.
+- UI: `https://vm.cluster.local/vmui` (PromQL/MetricsQL).
 
-## Re-enabling Monitoring
-
-To bring back Prometheus + Loki + Promtail, restore the ArgoCD Application manifests in `cluster/argocd/addons/` and the corresponding manifests in `cluster/monitoring/prometheus/`, `loki/`, and `promtail/` from git history.
+No node-exporter yet. The Pi Zeros don't have the memory to spare; cAdvisor covers container memory and CPU.
+The old Prometheus/Loki/Promtail manifests are in git history (`git show d8cf5eb^`).
 
 See [architecture.md](../../bootstrap/docs/architecture.md) for design decisions.
