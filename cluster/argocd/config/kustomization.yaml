@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - ingress.yaml
   - repo-victoriametrics-oci.yaml
+  - repo-prometheus-community-oci.yaml

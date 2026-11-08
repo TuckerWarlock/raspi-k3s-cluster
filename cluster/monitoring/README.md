@@ -16,6 +16,13 @@ deployed by `cluster/argocd/addons/vmalert.yaml` with rules and routing in `vmal
 Alerts go to the ntfy topic `cluster-status`; the rule list is in
 [memory-management.md → Alerting](../../bootstrap/docs/memory-management.md#alerting).
 
+Kubernetes object state: [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics),
+deployed by `cluster/argocd/addons/kube-state-metrics.yaml` with values in
+`kube-state-metrics/values.yaml` — limited to 6 resource types and the 13 metrics the alerts use,
+running on a Pi Zero. VictoriaMetrics scrapes it with its own `honor_labels` job
+(`extraScrapeConfigs` in `victoria-metrics/values.yaml`), and re-reads its scrape config every
+minute (`promscrape.configCheckInterval`).
+
 No node-exporter yet. The Pi Zeros don't have the memory to spare; cAdvisor covers container memory and CPU.
 The old Prometheus/Loki/Promtail manifests are in git history (`git show d8cf5eb^`).
 

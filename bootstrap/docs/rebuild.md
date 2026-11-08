@@ -293,6 +293,7 @@ ArgoCD then deploys, roughly in this order:
 | `argocd-config` | ArgoCD ingress + the VictoriaMetrics OCI repo | `argocd` |
 | `victoria-metrics` | VictoriaMetrics single-node | `monitoring` |
 | `vmalert` | vmalert + Alertmanager (memory alerts → ntfy) | `monitoring` |
+| `kube-state-metrics` | Kubernetes object state for the pod/node alerts (runs on a Pi Zero) | `monitoring` |
 | `workloads` | App-of-apps for `cluster/argocd/workloads/` | `argocd` |
 | `gatus` | Gatus status page | `gatus` |
 | `ntfy` | ntfy push-notification server | `ntfy` |

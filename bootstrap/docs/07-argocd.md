@@ -23,7 +23,8 @@ cluster/argocd/
     ├── traefik.yaml             # Helm chart
     ├── victoria-metrics.yaml    # Helm chart (OCI)
     ├── vmalert.yaml             # Helm chart (OCI) — vmalert + Alertmanager
-    ├── argocd-config.yaml       # cluster/argocd/config/ — ArgoCD ingress + OCI repo secret
+    ├── kube-state-metrics.yaml  # Helm chart (OCI, prometheus-community)
+    ├── argocd-config.yaml       # cluster/argocd/config/ — ArgoCD ingress + OCI repo secrets
     └── workloads.yaml           # → watches cluster/argocd/workloads/
                                  #     └── gatus.yaml → workloads/gatus/
 ```
