@@ -1,105 +1,74 @@
 # 05 — Traefik (Ingress Controller)
 
-Traefik acts as the single entry point for all HTTP/HTTPS traffic into the cluster. It
-receives a `LoadBalancer` IP from MetalLB and routes requests to services based on `Ingress`
-resources.
+> Reference guide. Traefik is deployed by ArgoCD — there is no manual install step.
+> See [rebuild.md step 3.4](rebuild.md#34--apply-the-root-application) for bootstrap, 3.5 for
+> the TLS secret, and 3.6 for hostnames.
 
-K3s ships with Traefik by default, but we disable the bundled version (`--disable traefik`)
-and deploy via Helm for full configuration control.
+Traefik is the single entry point for HTTP/HTTPS traffic. It gets `192.168.1.241` from
+MetalLB and routes each request to a Service by its `Host` header.
 
-## Prerequisites
+## How it's deployed
 
-- K3s server and agents running (steps 01–03)
-- MetalLB installed and IP pool applied (step 04)
+- **ArgoCD app:** `cluster/argocd/addons/traefik.yaml` — Traefik Helm chart 42.x with values
+  from `cluster/core-system/traefik/values.yaml`.
+- **Why not K3s's bundled Traefik:** it's disabled (`--disable traefik`) so the chart version
+  and values are pinned in Git.
+- **`ServerSideApply=true`:** Traefik's CRDs are too large for ArgoCD's client-side diff;
+  without it they stay `OutOfSync` and `selfHeal` re-syncs them on every reconcile.
+- **Chart 42+:** no longer bundles Gateway API CRDs. K3s ships its own (v1.6+) and an
+  admission policy that rejects older copies — which is what broke chart 39.
 
-## Step 1 — Install Traefik via helmfile
+## Configuration
 
-If you ran `helmfile sync` in step 04, Traefik is already installed. Verify:
+| Setting | Value |
+|---|---|
+| Placement | `pi4controller` (needs the MetalLB LAN IP) |
+| Resources | 64Mi request / 128Mi limit |
+| Entrypoints | `web` :80, `websecure` :443 (TLS) |
+| Default TLS cert | Secret `cluster-local-tls` — mkcert wildcard for `*.cluster.local` ([rebuild.md 3.5](rebuild.md#35--create-the-tls-secret-for-clusterlocal)) |
+| Access log | on |
 
-```bash
-kubectl -n traefik get pods
-kubectl -n traefik get svc
-```
+Ingresses use `ingressClassName: traefik` and the annotation
+`traefik.ingress.kubernetes.io/router.entrypoints: web,websecure`.
 
-The `traefik` service should have an `EXTERNAL-IP` from the MetalLB pool
-(e.g. `192.168.1.241`). If it shows `<pending>`, MetalLB's IP pool has not been applied —
-go back to step 04.
+## Hostnames
 
-If helmfile has not been run yet:
+| Host | Service |
+|---|---|
+| `argocd.cluster.local` | ArgoCD UI |
+| `vm.cluster.local` | VictoriaMetrics (UI at `/vmui`) |
+| `status.cluster.local` | Gatus |
+| `traefik.cluster.local` | Traefik dashboard at `/dashboard/` |
 
-```bash
-cd ~/raspi-k3s-cluster
-helmfile sync
-```
+All point to `192.168.1.241` — via Pi-hole Local DNS records or `/etc/hosts`
+([rebuild.md 3.6](rebuild.md#36--resolve-the-hostnames)).
 
-## Step 2 — Add cluster hostnames to /etc/hosts (laptop)
+The dashboard route is scoped to `Host(traefik.cluster.local)`. The chart default matches
+`/dashboard` and `/api` on **every** host, which captured other apps' `/api/*` paths over
+HTTP (VictoriaMetrics, Gatus) and returned 404.
 
-Traefik routes traffic based on the `Host` header. Add the Traefik external IP to
-`/etc/hosts` on your laptop for each hostname you want to resolve:
-
-```bash
-# Replace 192.168.1.241 with your actual Traefik EXTERNAL-IP
-echo "192.168.1.241 argocd.cluster.local" | sudo tee -a /etc/hosts
-echo "192.168.1.241 prometheus.cluster.local" | sudo tee -a /etc/hosts
-echo "192.168.1.241 grafana.cluster.local" | sudo tee -a /etc/hosts
-```
-
-> You only need to do this once per hostname. The same IP is used for all cluster services —
-> Traefik routes them by `Host` header.
-
-## Step 3 — Verify
-
-```bash
-kubectl -n traefik get pods
-# Expected: traefik-xxxxx (1/1 Running)
-
-kubectl -n traefik get svc
-# Expected: traefik LoadBalancer <cluster-ip> 192.168.1.241 80:xxxxx/TCP,443:xxxxx/TCP
-
-# Test HTTP reachability from laptop (replace IP with your Traefik EXTERNAL-IP)
-curl -I http://192.168.1.241
-# Expected: 404 (no default backend) — Traefik is up, just no matching route yet
-```
-
-## Traefik Dashboard
-
-The dashboard is enabled on the `web` entrypoint (port 80) at `/dashboard/`:
+## Verify
 
 ```bash
-# From laptop, after /etc/hosts is set or using the raw IP:
-curl http://192.168.1.241/dashboard/
-```
-
-Or port-forward to avoid needing /etc/hosts:
-```bash
-kubectl port-forward -n traefik svc/traefik 9000:9000
-# Open http://localhost:9000/dashboard/
+kubectl -n traefik get pods,svc            # 1/1 Running; EXTERNAL-IP 192.168.1.241
+curl -sI http://192.168.1.241              # 404 = Traefik is up, no route for a bare IP
+curl -s -o /dev/null -w '%{http_code}\n' -H "Host: traefik.cluster.local" http://192.168.1.241/dashboard/   # 200
 ```
 
 ## Troubleshooting
 
-**EXTERNAL-IP stays `<pending>`**
+**`EXTERNAL-IP` stays `<pending>`** — MetalLB has no pool yet; see
+[04-metallb.md](04-metallb.md#troubleshooting).
 
-MetalLB has not assigned an IP. Verify the pool is applied:
+**Browser shows a certificate warning** — the `cluster-local-tls` secret is missing
+(`kubectl -n traefik get secret cluster-local-tls`), or this device doesn't trust the mkcert CA.
+
+**Hostname returns 404**
+
 ```bash
-kubectl -n metallb-system get ipaddresspool
-```
-If missing, re-apply it (see step 04).
-
-**curl returns `connection refused`**
-
-Traefik pod may not be running:
-```bash
-kubectl -n traefik get pods
-kubectl -n traefik logs -l app.kubernetes.io/name=traefik
+kubectl get ingress -A                      # is the Ingress there, with the right host?
+kubectl -n traefik logs deploy/traefik --tail=50
 ```
 
-**Ingress created but hostname returns 404**
-
-Check Traefik has picked up the Ingress:
-```bash
-kubectl get ingress -A
-kubectl describe ingress <name> -n <namespace>
-```
-
-Ensure `ingressClassName: traefik` is set on the Ingress resource.
+Check `ingressClassName: traefik` is set, and that the path isn't `/api/*` on the `web`
+entrypoint being captured by another route.

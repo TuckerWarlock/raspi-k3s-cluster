@@ -14,17 +14,21 @@ K3s Kubernetes cluster running on a Raspberry Pi 4 controller with four Pi Zero 
 
 ## Quick Start
 
-Complete setup guides are in [bootstrap/docs/](bootstrap/docs/):
+**Building or rebuilding the cluster?** Follow [`bootstrap/docs/rebuild.md`](bootstrap/docs/rebuild.md)
+top to bottom — it's the single ordered runbook for a first build and for recovering after
+a reflash.
 
-1. [ClusterHAT OS & CNAT setup](bootstrap/docs/01-clusterhat-setup.md) — image selection, flashing, first boot
-2. [K3s server on Pi 4](bootstrap/docs/02-k3s-server.md) — control plane setup
-3. [K3s agents on Pi Zeros](bootstrap/docs/03-k3s-agents.md) — worker setup
-4. [MetalLB load balancer](bootstrap/docs/04-metallb-load-balancer.md)
-5. [Traefik ingress controller](bootstrap/docs/05-traefik-ingress.md)
-6. ArgoCD GitOps — deployed via `helmfile sync`
-7. VictoriaMetrics + Gatus — deployed by ArgoCD from `cluster/argocd/addons/` and `cluster/argocd/workloads/`
+Reference guides (the *why*, plus troubleshooting) in [bootstrap/docs/](bootstrap/docs/):
 
-> **Rebuilding after a reflash?** → [`bootstrap/docs/post-reflash.md`](bootstrap/docs/post-reflash.md)
+1. [ClusterHAT OS & power](bootstrap/docs/01-clusterhat-setup.md) — images, flashing, `clusterctrl`, power rules
+2. [K3s server](bootstrap/docs/02-k3s-server.md) — control-plane flags and eviction settings
+3. [K3s agents](bootstrap/docs/03-k3s-agents.md) — Pi Zero underclocking, agent flags, labels
+4. [MetalLB](bootstrap/docs/04-metallb.md) — bare-metal load balancer
+5. [Traefik](bootstrap/docs/05-traefik.md) — ingress, TLS, hostnames
+6. [ArgoCD](bootstrap/docs/07-argocd.md) — GitOps layout, adding workloads, troubleshooting
+
+Also: [architecture.md](bootstrap/docs/architecture.md) (hardware, network, placement, decisions)
+and [memory-management.md](bootstrap/docs/memory-management.md) (memory budget, safe deploys).
 
 ## Scripts
 
@@ -34,62 +38,44 @@ See [bootstrap/scripts/README.md](bootstrap/scripts/README.md) for the script re
 
 ```
 raspi-k3s-cluster/
-├── bootstrap/                           # One-time setup (manual, hands-off after)
-│   ├── scripts/                         # Installation scripts
-│   │   ├── README.md                   # Script reference
-│   │   ├── install-helm.sh             # Helm, Helmfile
-│   │   ├── install-k3s-agent.sh        # K3s agent on workers
-│   │   ├── install-k3s-server.sh       # K3s control plane
-│   │   ├── set-static-ip.sh            # Static IP setup
-│   │   ├── setup-agents.sh             # Pi Zero agent setup
-│   │   ├── setup-controller.sh         # Pi 4 controller setup
-│   │   └── uninstall-k3s.sh            # K3s teardown
-│   └── docs/                            # Setup guides & architecture
-│       ├── 01-clusterhat-setup.md      # ClusterHAT hardware & OS
-│       ├── 02-k3s-server.md            # K3s control plane setup
-│       ├── 03-k3s-agents.md            # K3s worker setup
-│       ├── 04-metallb-load-balancer.md # MetalLB load balancer
-│       ├── 05-traefik-ingress.md       # Traefik ingress controller
-│       ├── 08-prometheus-grafana-monitoring.md # Monitoring stack
-│       └── architecture.md             # Architecture & decisions
+├── bootstrap/                      # Run by hand on the Pis
+│   ├── scripts/                    # setup-*, install-*, set-static-ip, uninstall, reset
+│   └── docs/
+│       ├── rebuild.md              # ★ Ordered build / rebuild runbook
+│       ├── 01-clusterhat-setup.md  # ClusterHAT OS & power
+│       ├── 02-k3s-server.md        # K3s server reference
+│       ├── 03-k3s-agents.md        # K3s agent reference
+│       ├── 04-metallb.md           # MetalLB reference
+│       ├── 05-traefik.md           # Traefik reference
+│       ├── 07-argocd.md            # ArgoCD reference
+│       ├── architecture.md         # Hardware, network, placement, decisions
+│       └── memory-management.md    # Memory budget & safe deploys
 │
-├── cluster/                             # Kubernetes manifests (managed by ArgoCD)
-│   ├── core-system/                    # Core infrastructure (via helmfile)
-│   │   ├── metallb/                    # Load balancer
-│   │   │   ├── ipaddresspool.yaml      # IP pool
-│   │   │   ├── l2advertisement.yaml    # L2 advertisement
-│   │   │   └── values.yaml             # Helm values
-│   │   └── traefik/                    # Ingress controller
-│   │       ├── values.yaml             # Helm values
-│   │       └── traefik-test-ingress.yaml # Test ingress
-│   ├── monitoring/                     # Monitoring namespace + VictoriaMetrics values
-│   │   ├── namespace.yaml
-│   │   └── victoria-metrics/values.yaml
-│   └── argocd/                         # GitOps management (via helmfile)
-│       ├── namespace.yaml
-│       ├── application-cluster.yaml
-│       ├── ingress.yaml
-│       └── values.yaml
+├── cluster/                        # Infrastructure (deployed by ArgoCD)
+│   ├── argocd/
+│   │   ├── argocd-values.yaml      # ArgoCD Helm values (installed by helmfile)
+│   │   ├── root-application.yaml   # App of apps → addons/
+│   │   ├── addons/                 # One Application per infra component
+│   │   ├── config/                 # ArgoCD ingress + OCI repo secret
+│   │   └── workloads/              # One Application per workload → workloads/
+│   ├── core-system/
+│   │   ├── metallb/                # values.yaml + config/ (IP pool, L2 advertisement)
+│   │   └── traefik/                # values.yaml
+│   └── monitoring/                 # namespace + victoria-metrics/values.yaml
 │
-├── workloads/                          # User applications (managed by ArgoCD)
-│   └── gatus/                          # Gatus uptime/status checks
-│       ├── namespace.yaml
-│       ├── configmap.yaml              # Gatus endpoint checks
-│       ├── deployment.yaml             # Gatus + SQLite PVC
-│       ├── ingress.yaml                # Traefik ingress → status.cluster.local
-│       └── kustomization.yaml
+├── workloads/                      # Applications (deployed by ArgoCD)
+│   └── gatus/                      # Status page → status.cluster.local
 │
-├── helmfile.yaml                       # Helm release definitions
-├── local_ci.sh                         # Local manifest validation
-├── README.md                           # This file
-└── .gitignore
+├── CLAUDE.md                       # Instructions for AI assistants (Copilot's file points here)
+├── helmfile.yaml                   # Bootstraps ArgoCD only
+└── local_ci.sh                     # Runs the same checks as CI
 ```
 
 ### Directory Purposes
 
 | Directory | Purpose | Managed By |
 |-----------|---------|-----------|
-| **bootstrap/** | One-time setup scripts & docs | Manual (don't run after setup) |
+| **bootstrap/** | Setup scripts & docs | Manual — re-run on every rebuild ([rebuild.md](bootstrap/docs/rebuild.md)) |
 | **cluster/** | Infrastructure-as-code for cluster | ArgoCD (auto-synced from Git) |
 | **workloads/** | User applications & services | ArgoCD (auto-synced from Git) |
 

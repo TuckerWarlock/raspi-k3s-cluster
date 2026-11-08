@@ -10,19 +10,19 @@ argocd/
 ├── namespace.yaml              # ArgoCD namespace
 ├── root-application.yaml       # Root Application CRD (deploys everything)
 ├── argocd-values.yaml          # Helm values for ArgoCD itself
-├── argocd-ingress.yaml         # Ingress for ArgoCD server UI
+├── config/                     # ArgoCD ingress + VictoriaMetrics OCI repo secret
 ├── addons/                     # System services on pi4controller
 │   ├── kustomization.yaml
 │   ├── metallb.yaml            # MetalLB Application
 │   ├── metallb-config.yaml     # IPAddressPool + L2Advertisement
 │   ├── traefik.yaml            # Traefik Application
 │   ├── victoria-metrics.yaml   # VictoriaMetrics Application
-│   ├── argocd-config.yaml      # ArgoCD ingress
+│   ├── argocd-config.yaml      # → config/
 │   ├── workloads.yaml          # App-of-apps for workloads/
 │   └── docs/INDEX.md
 └── workloads/                  # User applications (pi zero workers)
     ├── kustomization.yaml
-    └── (add your apps here)
+    └── gatus.yaml              # → workloads/gatus/ at the repo root
 ```
 
 ## Deployment
@@ -62,10 +62,11 @@ Default credentials: `admin` / (get password from: `kubectl -n argocd get secret
 
 ## Adding User Workloads
 
-Create your application in a new file under `workloads/`:
+Put the manifests in `workloads/my-app/` at the repo root, then create the Application in
+`cluster/argocd/workloads/` (copy `gatus.yaml`):
 
 ```yaml
-# workloads/my-app.yaml
+# cluster/argocd/workloads/my-app.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -86,14 +87,15 @@ spec:
       selfHeal: true
 ```
 
-Then add to `workloads/kustomization.yaml`:
+Then add it to `cluster/argocd/workloads/kustomization.yaml`:
 
 ```yaml
 resources:
 - my-app.yaml
 ```
 
-Commit and push. ArgoCD will auto-sync within seconds.
+Run `./local_ci.sh`, commit, and push. ArgoCD picks it up within 5 minutes. Full steps:
+[07-argocd.md → Adding a workload](../../bootstrap/docs/07-argocd.md#adding-a-workload).
 
 ## Separation Strategy
 
@@ -102,8 +104,8 @@ Commit and push. ArgoCD will auto-sync within seconds.
   - Resources reserved for cluster health
   
 - **workloads/** — user applications
-  - Deploy on pi zero workers (512MB RAM each)
-  - Can use node-role labels for scheduling
+  - Prefer the Pi Zero workers (`node-role.kubernetes.io/worker` nodeSelector, 512MB RAM each)
+  - Pin to `pi4controller` only if the app needs the LAN or a USB-backed PVC (e.g. Gatus)
 
 ## GitOps Workflow
 

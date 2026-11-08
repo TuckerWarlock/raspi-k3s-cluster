@@ -6,7 +6,7 @@
 # Usage:
 #   bash setup-agents.sh
 #   or
-#   curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/scripts/setup-agents.sh | bash
+#   curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/bootstrap/scripts/setup-agents.sh | bash
 
 set -euo pipefail
 

@@ -211,8 +211,8 @@ pass "Lint passed"
 
 install_kubeconform
 
-step "kubeconform: validating raw cluster manifests"
-find cluster -type f \( -name "*.yaml" -o -name "*.yml" \) \
+step "kubeconform: validating raw cluster + workloads manifests"
+find cluster workloads -type f \( -name "*.yaml" -o -name "*.yml" \) \
   ! -name "values.yaml" \
   ! -name "*-values.yaml" \
   ! -path "*/patches/*" \
@@ -240,11 +240,15 @@ pass "Rendered manifests passed"
 
 install_pluto
 
-step "Pluto: checking raw cluster manifests (target k8s $K8S_TARGET_VERSION)"
+step "Pluto: checking raw cluster + workloads manifests (target k8s $K8S_TARGET_VERSION)"
 "$PLUTO_BIN" detect-files \
   --output wide \
   --target-versions "k8s=${K8S_TARGET_VERSION}" \
   -d cluster
+"$PLUTO_BIN" detect-files \
+  --output wide \
+  --target-versions "k8s=${K8S_TARGET_VERSION}" \
+  -d workloads
 pass "Raw manifests — no deprecated APIs"
 
 step "Pluto: checking rendered Helm manifests"
