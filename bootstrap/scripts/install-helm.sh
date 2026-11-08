@@ -20,10 +20,10 @@ helm version
 
 echo ""
 echo "==> Installing Helmfile..."
-HELMFILE_VERSION="v0.144.0"
-HELMFILE_URL="https://github.com/roboll/helmfile/releases/download/${HELMFILE_VERSION}/helmfile_linux_arm64"
-sudo curl -fL "${HELMFILE_URL}" -o /usr/local/bin/helmfile
-sudo chmod +x /usr/local/bin/helmfile
+# Keep in sync with HELMFILE_VERSION in local_ci.sh and the CI workflow
+HELMFILE_VERSION="v1.4.2"
+HELMFILE_URL="https://github.com/helmfile/helmfile/releases/download/${HELMFILE_VERSION}/helmfile_${HELMFILE_VERSION#v}_linux_arm64.tar.gz"
+curl -fL "${HELMFILE_URL}" | sudo tar -xz -C /usr/local/bin helmfile
 
 echo ""
 echo "==> Helmfile version:"
