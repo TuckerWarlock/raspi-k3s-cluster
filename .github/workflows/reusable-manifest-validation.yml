@@ -1,7 +1,9 @@
 # Reusable CI workflow for manifest validation.
 # Called by helm-validate.yml to run:
-# - kubeconform schema checks
+# - kubeconform schema checks + repo policy checks (ci/policy-check.rb)
 # - Pluto API deprecation checks
+# Both cover raw manifests, helmfile.yaml (ArgoCD), and every chart deployed by an ArgoCD
+# Application in cluster/argocd/addons/ (rendered by ci/render-argocd-apps.rb).
 name: Reusable Manifest Validation
 
 on:
@@ -39,6 +41,13 @@ jobs:
           helmfile template > /tmp/all-rendered.yaml
           test -s /tmp/all-rendered.yaml
 
+      # helmfile.yaml only installs ArgoCD; the charts ArgoCD deploys (MetalLB, Traefik,
+      # VictoriaMetrics, vmalert, kube-state-metrics) are rendered from their Applications
+      - name: Render ArgoCD-deployed charts
+        run: |
+          ruby ci/render-argocd-apps.rb /tmp/argocd-rendered.yaml
+          test -s /tmp/argocd-rendered.yaml
+
       - name: Setup kubeconform and kustomize
         if: ${{ inputs.validator == 'kubeconform' }}
         uses: yokawasa/action-setup-kube-tools@v0.14.1
@@ -69,7 +78,13 @@ jobs:
             -strict \
             -summary \
             -ignore-missing-schemas \
-            /tmp/all-rendered.yaml
+            /tmp/all-rendered.yaml /tmp/argocd-rendered.yaml
+
+      - name: Policy checks
+        if: ${{ inputs.validator == 'kubeconform' }}
+        run: |
+          xargs ruby ci/policy-check.rb /tmp/all-rendered.yaml /tmp/argocd-rendered.yaml \
+            < /tmp/raw-manifest-files.txt
 
       - name: Download Pluto
         if: ${{ inputs.validator == 'pluto' }}
@@ -92,3 +107,8 @@ jobs:
             --output wide \
             --target-versions "k8s=${{ inputs.k8s_target_version }}" \
             /tmp/all-rendered.yaml
+
+          pluto detect-files \
+            --output wide \
+            --target-versions "k8s=${{ inputs.k8s_target_version }}" \
+            /tmp/argocd-rendered.yaml

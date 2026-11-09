@@ -4,10 +4,11 @@ set -euo pipefail
 # =============================================================================
 # local_ci.sh — mirrors .github/workflows/ CI jobs locally
 # Runs all jobs: shellcheck (script linting) + kubeconform (Helm schema
-# validation) + Pluto (API deprecation)
+# validation) + repo policy checks (ci/policy-check.rb) + Pluto (API deprecation)
 #
-# Helm releases are discovered automatically from helmfile.yaml — add a new
-# chart there and this script (and CI) will pick it up with no other changes.
+# Rendered input: helmfile.yaml (ArgoCD) plus every chart deployed by an ArgoCD
+# Application in cluster/argocd/addons/ (ci/render-argocd-apps.rb). Add a chart in
+# either place and this script (and CI) pick it up with no other changes.
 # =============================================================================
 
 KUBECONFORM_VERSION="v0.6.7"
@@ -49,7 +50,7 @@ detect_platform() {
 }
 
 check_deps() {
-  for cmd in curl tar helm; do
+  for cmd in curl tar helm ruby; do
     command -v "$cmd" &>/dev/null || fail "'$cmd' not found — install it first"
   done
 }
@@ -168,7 +169,7 @@ install_shellcheck() {
 
 step "Checking dependencies"
 check_deps
-pass "helm, curl, tar all present"
+pass "helm, curl, tar, ruby all present"
 
 PLATFORM="$(detect_platform)"
 step "Detected platform: $PLATFORM"
@@ -201,6 +202,11 @@ XDG_CACHE_HOME="$WORK_DIR/.cache" "$HELMFILE_BIN" template \
 test -s "$WORK_DIR/all-rendered.yaml" || fail "helmfile rendered empty output"
 pass "All releases rendered to $WORK_DIR/all-rendered.yaml"
 
+step "Rendering ArgoCD-deployed charts (cluster/argocd/addons/)"
+ruby "$REPO_ROOT/ci/render-argocd-apps.rb" "$WORK_DIR/argocd-rendered.yaml"
+test -s "$WORK_DIR/argocd-rendered.yaml" || fail "ArgoCD charts rendered empty output"
+pass "ArgoCD charts rendered to $WORK_DIR/argocd-rendered.yaml"
+
 step "Linting all releases via helmfile"
 XDG_CACHE_HOME="$WORK_DIR/.cache" "$HELMFILE_BIN" lint
 pass "Lint passed"
@@ -231,8 +237,14 @@ step "kubeconform: validating rendered Helm manifests"
   -strict \
   -summary \
   -ignore-missing-schemas \
-  "$WORK_DIR/all-rendered.yaml"
+  "$WORK_DIR/all-rendered.yaml" "$WORK_DIR/argocd-rendered.yaml"
 pass "Rendered manifests passed"
+
+step "Policy checks (ci/policy-check.rb)"
+xargs ruby "$REPO_ROOT/ci/policy-check.rb" \
+  "$WORK_DIR/all-rendered.yaml" "$WORK_DIR/argocd-rendered.yaml" \
+  < "$WORK_DIR/raw-manifest-files.txt"
+pass "Policy checks passed"
 
 # ---------------------------------------------------------------------------
 # Job 2: Pluto — API deprecation check
@@ -256,6 +268,10 @@ step "Pluto: checking rendered Helm manifests"
   --output wide \
   --target-versions "k8s=${K8S_TARGET_VERSION}" \
   "$WORK_DIR/all-rendered.yaml"
+"$PLUTO_BIN" detect-files \
+  --output wide \
+  --target-versions "k8s=${K8S_TARGET_VERSION}" \
+  "$WORK_DIR/argocd-rendered.yaml"
 pass "Rendered manifests — no deprecated APIs"
 
 # ---------------------------------------------------------------------------

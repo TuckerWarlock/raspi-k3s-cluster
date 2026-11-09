@@ -7,6 +7,7 @@ on:
       - "cluster/**"
       - "workloads/**"
       - "helmfile.yaml"
+      - "ci/**"
       - ".github/workflows/helm-validate.yml"
       - ".github/workflows/reusable-manifest-validation.yml"
   push:

@@ -68,6 +68,7 @@ raspi-k3s-cluster/
 │   └── ntfy/                       # Push notifications → ntfy.home.arpa
 │
 ├── CLAUDE.md                       # Instructions for AI assistants (Copilot's file points here)
+├── ci/                             # CI helpers: render ArgoCD-deployed charts, policy checks
 ├── helmfile.yaml                   # Bootstraps ArgoCD only
 └── local_ci.sh                     # Runs the same checks as CI
 ```
@@ -99,5 +100,6 @@ raspi-k3s-cluster/
 ### Validation & CI
 - [kubeconform](https://github.com/yannh/kubeconform) — Kubernetes manifest schema validation
 - [Pluto](https://pluto.docs.fairwinds.com/) — API deprecation detection
+- `ci/render-argocd-apps.rb` + `ci/policy-check.rb` — render ArgoCD-deployed charts; repo policy rules (Ruby stdlib, no extra installs)
 
 See [bootstrap/docs/architecture.md](bootstrap/docs/architecture.md) for the full tech stack, network layout, and design decisions.
