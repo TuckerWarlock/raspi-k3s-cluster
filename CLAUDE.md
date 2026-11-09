@@ -9,8 +9,9 @@ from `main`, so **merging to `main` deploys to the live cluster**.
 - **Running:** K3s v1.37, MetalLB, Traefik (chart 42.x), ArgoCD v3.6 (chart 10.x),
   VictoriaMetrics single-node, vmalert + Alertmanager, kube-state-metrics, Gatus, ntfy
   (alerts from Gatus and Alertmanager land on the `cluster-status` topic).
-- **Planned (on hold):** Tailscale subnet router + split DNS for `home.arpa`; VictoriaLogs
-  (`victoria-logs-single` + `victoria-logs-collector`).
+- **Host (not Kubernetes):** Tailscale subnet router on the Pi 4 for `192.168.1.0/24`, split
+  DNS `home.arpa` → Pi-hole ([rebuild.md 3.10](bootstrap/docs/rebuild.md#310--remote-access-with-tailscale)).
+- **Planned (on hold):** VictoriaLogs (`victoria-logs-single` + `victoria-logs-collector`).
 - **Removed:** Longhorn (too heavy; using K3s local-path), Prometheus/Grafana/Loki (replaced by
   VictoriaMetrics), Monday/Ollama (LLM inference too slow on the Pi 4 CPU).
 
@@ -101,6 +102,7 @@ the cluster's Kubernetes version when bumping — see the version-skew entries i
 | MetalLB pool / Traefik | `192.168.1.241`–`.254` / `.241` (router DHCP is `.2`–`.240`) |
 | CNAT | `172.19.181.0/24` — controller `.254` on `br0`, p1–p4 `.1`–`.4` on `usb0` |
 | Pods / Services | `10.42.0.0/16` / `10.43.0.0/16` (K3s defaults) |
+| Tailscale | Pi 4 `tailscale0` (`100.64.0.0/10`), subnet route `192.168.1.0/24`, split DNS `home.arpa` → `192.168.1.158` |
 
 Hostnames (→ `192.168.1.241`): `argocd`, `vm`, `status`, `traefik` `.cluster.local`, plus
 `ntfy.home.arpa` — iOS won't resolve `.local` via DNS, so anything the phone uses needs a
@@ -114,7 +116,7 @@ header accurate.
 
 | Script | Run as | Notes |
 |--------|--------|-------|
-| `setup-controller.sh` | user | Uses sudo internally; idempotent; installs fan service + backup timer |
+| `setup-controller.sh` | user | Uses sudo internally; idempotent; installs fan service, backup timer, Tailscale (`tailscale up` is manual) |
 | `set-static-ip.sh` | `sudo bash` | `sudo bash set-static-ip.sh 192.168.1.135` |
 | `install-k3s-server.sh` | `sudo bash` | Needs cgroup flags in `cmdline.txt` |
 | `install-k3s-agent.sh` | user | `K3S_TOKEN` + `NODE_IP` env vars; download first, never `curl \| bash` |

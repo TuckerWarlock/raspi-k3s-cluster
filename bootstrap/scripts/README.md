@@ -6,7 +6,7 @@ One-time setup scripts for provisioning the K3s cluster on Raspberry Pi hardware
 
 | Script | Purpose | Run As |
 |--------|---------|--------|
-| `setup-controller.sh` | CLI tools, swap, sysctls, shutdown hook, fan service, nightly K3s backup timer | `bash` |
+| `setup-controller.sh` | CLI tools, swap, sysctls, shutdown hook, fan service, nightly K3s backup timer, Tailscale install | `bash` |
 | `set-static-ip.sh` | Set static IPv4 on Pi 4 | `sudo bash` |
 | `setup-agents.sh` | Install CLI tools on Pi Zero workers | `bash` |
 | `install-k3s-server.sh` | Install K3s control plane on Pi 4 | `sudo bash` |

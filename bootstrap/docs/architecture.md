@@ -32,6 +32,7 @@ Home LAN (192.168.1.0/24 — router DHCP hands out .2–.240)
  ├── MetalLB pool           → 192.168.1.241–.254 (Traefik = .241)
  └── Raspberry Pi 4 controller
       ├── eth0  → 192.168.1.135   (static, set-static-ip.sh; reserve it on the router)
+      ├── tailscale0 → 100.x.x.x  (Tailscale subnet router: advertises 192.168.1.0/24)
       └── br0   → 172.19.181.254  (CNAT gateway for Pi Zero nodes; one ethpiN per node)
            ├── p1  172.19.181.1
            ├── p2  172.19.181.2
@@ -42,6 +43,12 @@ Home LAN (192.168.1.0/24 — router DHCP hands out .2–.240)
 **CNAT (Cluster NAT):** Pi Zero nodes route all traffic through the Pi 4 controller.
 They have no direct LAN or WiFi connection — all network access goes via the HAT's USB
 interface. The Pi 4 acts as their gateway.
+
+**Remote access (Tailscale):** the Pi 4 runs Tailscale on the host as a subnet router for
+`192.168.1.0/24`, so tailnet devices (iPhone, laptop) reach Traefik, the Pi-hole, and the K3s API
+from anywhere; Tailscale traffic to the LAN is SNAT'd to `192.168.1.135`. Split DNS sends
+`home.arpa` queries to the Pi-hole, which is how `ntfy.home.arpa` resolves off-LAN. No router
+port forwarding is needed. Setup: [rebuild.md step 3.10](rebuild.md#310--remote-access-with-tailscale).
 
 **K3s pod/service networking:** Flannel (K3s default CNI). Agents are joined with
 explicit `--node-ip` and `--flannel-iface usb0` to ensure traffic uses the correct interface
@@ -90,12 +97,12 @@ K3s's bundled Traefik and ServiceLB are **disabled** (`--disable traefik --disab
 | **ntfy** | Push notifications to the iPhone (`ntfy.home.arpa`) | ArgoCD (manifests) | controller |
 | **vmalert + Alertmanager** | Memory, scrape, and Kubernetes-state alert rules → ntfy | ArgoCD (Helm, OCI) | controller |
 | **kube-state-metrics** | Pod/deployment/node/PVC state for alerts (6 resource types, 13 metrics) | ArgoCD (Helm, OCI) | a Pi Zero |
+| **Tailscale** | Remote access: subnet router for `192.168.1.0/24`, split DNS `home.arpa` → Pi-hole | `setup-controller.sh` + `tailscale up` (host systemd service, not Kubernetes) | controller |
 
 ### Planned
 
 | Component | Purpose | Notes |
 |-----------|---------|-------|
-| **WireGuard / Tailscale** | Remote access | |
 | **SOPS + age** | Encrypted secrets in Git | Not set up — today's secrets (`cluster-local-tls`, `ntfy-tls`, `gatus-ntfy`, `alertmanager-ntfy`) are created by hand |
 | **Cilium + Hubble** | eBPF CNI + network observability | Replaces Flannel; install K3s with `--flannel-backend=none` |
 | **cert-manager** | Let's Encrypt certificates | Deferred — the mkcert wildcard works for a homelab |
@@ -234,3 +241,4 @@ Capturing key decisions and the reasoning behind them.
 | Pi 4 data | USB drive at `/mnt/usb` | SD card only | SD card corrupts on power loss; images, PVCs, and backups live on USB |
 | ntfy hostname | `ntfy.home.arpa` | `ntfy.cluster.local` | iOS resolves `.local` only via mDNS, so a Pi-hole record would never be used by the phone |
 | kube-state-metrics scraping | Dedicated VictoriaMetrics job with `honor_labels: true` | Generic `prometheus.io/scrape` service job | The generic job drops it (no port annotation) and renames its `namespace`/`pod`/`node` labels to `exported_*` |
+| Remote access | Tailscale subnet router on the Pi 4 host | Tailscale operator in K3s; plain WireGuard; router port forwarding | Host service survives K3s outages and costs no pod memory; one route exposes every LAN service; no open ports; split DNS handles `home.arpa` |

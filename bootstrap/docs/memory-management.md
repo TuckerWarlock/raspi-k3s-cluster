@@ -107,6 +107,7 @@ Measured after the November 2026 rebuild, everything idle:
 |----------|-------|
 | Pods on the controller (table above, plus CoreDNS, metrics-server, local-path) | ~460Mi |
 | K3s server process, containerd, OS | ~1.4Gi |
+| `tailscaled` (host service, not in cAdvisor's view — check `systemctl status tailscaled`) | not yet measured |
 | **Node total (`kubectl top nodes`)** | **~1.85–1.95Gi (62–66% of allocatable)** |
 | **Headroom before soft eviction (512Mi available)** | **~1.3Gi** |
 

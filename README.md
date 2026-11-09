@@ -97,6 +97,9 @@ raspi-k3s-cluster/
 - [Gatus](https://gatus.io/) — uptime/status checks at `status.cluster.local`
 - [ntfy](https://ntfy.sh/) — self-hosted push notifications at `ntfy.home.arpa`
 
+### Remote Access
+- [Tailscale](https://tailscale.com/) — subnet router on the Pi 4 + split DNS for `home.arpa` (host service, not in Kubernetes)
+
 ### Validation & CI
 - [kubeconform](https://github.com/yannh/kubeconform) — Kubernetes manifest schema validation
 - [Pluto](https://pluto.docs.fairwinds.com/) — API deprecation detection
