@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # setup-controller.sh
-# Run once on the Raspberry Pi 4 controller after first boot.
-# Installs CLI tools, sets up .bash_profile, and installs oh-my-posh + FiraCode font.
+# Run once on the Raspberry Pi 4 controller after first boot (and after every reflash).
+# Installs CLI tools, sets up .bash_profile, and installs oh-my-posh + FiraCode font; configures
+# swap, memory sysctls, the ClusterHAT shutdown hook and fan service, the nightly K3s backup
+# timer, and installs Tailscale (subnet router — `tailscale up` is a manual step, see
+# bootstrap/docs/rebuild.md step 3.10).
 
 set -euo pipefail
 
@@ -167,6 +170,29 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now k3s-backup.timer
 echo "    k3s-backup.timer enabled — nightly backups to /mnt/usb/backups/"
+
+echo ""
+echo "==> Installing Tailscale (subnet router for remote access)..."
+# Official Debian Bookworm repo. Runs on the host, not in Kubernetes, so remote access
+# survives K3s being down. Login and route advertisement are manual: rebuild.md step 3.10.
+if command -v tailscale > /dev/null 2>&1; then
+  echo "    tailscale already installed, skipping"
+else
+  curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg \
+    | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg > /dev/null
+  curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list \
+    | sudo tee /etc/apt/sources.list.d/tailscale.list > /dev/null
+  sudo apt-get update
+  sudo apt-get install -y tailscale
+fi
+
+# Subnet routers forward traffic for 192.168.1.0/24 (IPv4 forwarding is also needed by CNAT)
+sudo tee /etc/sysctl.d/99-tailscale.conf > /dev/null << 'EOF'
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+EOF
+sudo sysctl -p /etc/sysctl.d/99-tailscale.conf > /dev/null
+echo "    tailscale installed — next: sudo tailscale up (rebuild.md step 3.10)"
 
 echo ""
 echo "==> Done! Run 'source ~/.bash_profile' or open a new shell to apply changes."

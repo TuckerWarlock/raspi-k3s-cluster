@@ -57,7 +57,8 @@ source ~/.bash_profile
 ```
 
 Installs CLI tools and configures: 1GB swap, memory sysctls, the ClusterHAT shutdown hook,
-the case fan service (`clusterhat-fan.service`), and the nightly K3s backup timer. All of it
+the case fan service (`clusterhat-fan.service`), the nightly K3s backup timer, and installs
+Tailscale (brought up in step 3.10). All of it
 is lost on a reflash — always re-run.
 
 ### 1.4 — Set a static IP
@@ -445,6 +446,42 @@ kubectl -n monitoring exec deploy/vmalert-victoria-metrics-alert-alertmanager --
 `notifications_total` should go to 1 with no `failed` lines; `reason="authError"` or
 `clientError` usually means the `alertmanager-ntfy` token is missing or wrong.
 
+### 3.10 — Remote access with Tailscale
+
+The Pi 4 is a Tailscale **subnet router** for `192.168.1.0/24`, running on the host (not in
+Kubernetes), so phones and laptops on the tailnet reach Traefik, the Pi-hole, and the K3s API
+from anywhere. `setup-controller.sh` (step 1.3) already installed it and enabled forwarding.
+
+```bash
+sudo tailscale up --hostname=pi4controller --advertise-routes=192.168.1.0/24 --accept-dns=false
+# open the printed login URL while signed in to the Tailscale admin console
+```
+
+`--accept-dns=false` keeps the Pi on its own DNS. The `UDP GRO forwarding is suboptimally
+configured` warning only affects bulk throughput through the router; it's safe to ignore.
+
+In the [admin console](https://login.tailscale.com/admin/machines):
+
+1. **Machines → pi4controller → ⋯ → Edit route settings** → approve `192.168.1.0/24`
+   (advertised routes do nothing until approved).
+2. **⋯ → Disable key expiry** — otherwise the Pi drops off the tailnet after 180 days.
+3. **DNS → Nameservers → Add nameserver → Custom** → `192.168.1.158`, **Restrict to domain**
+   `home.arpa`. Split DNS: tailnet clients resolve `ntfy.home.arpa` via the Pi-hole from anywhere.
+   The Pi-hole sees these queries from the Pi 4's LAN IP, so it answers them like any LAN client.
+
+On the iPhone (and any laptop): install Tailscale, sign in with the same account. Test on
+mobile data (Wi-Fi off): `https://ntfy.home.arpa` loads without a certificate warning, and
+
+```bash
+curl -u warl0ck -d "hello over tailscale" https://ntfy.home.arpa/cluster-status
+```
+
+reaches the phone.
+
+> **After a reflash** the Pi's Tailscale identity (`/var/lib/tailscale`, on the SD card) is gone.
+> Remove the old `pi4controller` machine in the admin console first, then run `tailscale up`
+> again and re-approve the route and disable key expiry. Split DNS is tailnet-wide and survives.
+
 ---
 
 ## Phase 4 — Verify
@@ -454,7 +491,8 @@ kubectl get nodes                      # all Ready
 kubectl get pods -A                    # Running/Completed — no CrashLoopBackOff or OOMKilled
 kubectl top nodes                      # controller under ~80% memory
 kubectl -n argocd get applications     # all Synced + Healthy
-systemctl status clusterhat-fan k3s-backup.timer
+systemctl status clusterhat-fan k3s-backup.timer tailscaled
+tailscale status                       # pi4controller online; routes approved
 ```
 
 Then open `https://status.cluster.local` — every Gatus check should be green. Failures and
