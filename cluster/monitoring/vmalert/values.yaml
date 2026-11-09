@@ -123,6 +123,27 @@ server:
               annotations:
                 summary: "{{ $labels.namespace }}/{{ $labels.daemonset }} has {{ $value }} pod(s) not ready"
 
+            # Restarts that never reach CrashLoopBackOff (e.g. one OOM kill an hour).
+            # increase_prometheus, not increase: VictoriaMetrics' increase() counts a new
+            # series' first value as growth from zero, so every kube-state-metrics restart
+            # would report each pod's lifetime restart count as "recent".
+            - alert: PodRestartingOften
+              expr: max by (namespace, pod, container) (increase_prometheus(kube_pod_container_status_restarts_total[1h])) >= 3
+              labels:
+                severity: warning
+              annotations:
+                summary: "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) restarted {{ $value | humanize }} times in the last hour"
+
+            # The kubelet is already evicting (memory/disk) or out of PIDs on this node
+            - alert: NodePressure
+              expr: max by (node, condition) (kube_node_status_condition{condition=~"MemoryPressure|DiskPressure|PIDPressure", status="true"}) == 1
+              for: 2m
+              labels:
+                severity: critical
+              annotations:
+                summary: "Node {{ $labels.node }} has {{ $labels.condition }}"
+                description: "The kubelet evicts pods under Memory/DiskPressure. Check kubectl describe node {{ $labels.node }}."
+
             - alert: NodeNotReady
               expr: max by (node) (kube_node_status_condition{condition="Ready", status="true"}) == 0
               for: 5m
