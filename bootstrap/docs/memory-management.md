@@ -160,13 +160,15 @@ Alertmanager pushes firing and resolved alerts to the same ntfy topic
 | `ContainerOOMKilled` | a container was OOM-killed in the last 15m | warning |
 | `ScrapeTargetDown` | a VictoriaMetrics scrape target is down for 10m | warning |
 | `PodCrashLooping` | a container is in `CrashLoopBackOff` for 5m | critical |
+| `PodRestartingOften` | a container restarted 3+ times in the last hour (catches restarts that never reach `CrashLoopBackOff`) | warning |
 | `PodNotReady` | a Running/Pending pod is not Ready for 10m | warning |
 | `DeploymentReplicasMismatch` / `StatefulSetReplicasMismatch` | desired ≠ available/ready replicas for 10m | warning |
 | `DaemonSetNotReady` | a DaemonSet has pods not ready for 10m | warning |
 | `NodeNotReady` | a node's `Ready` condition is false/unknown for 5m | critical |
+| `NodePressure` | a node reports `MemoryPressure`, `DiskPressure`, or `PIDPressure` for 2m (the kubelet is evicting) | critical |
 | `PVCPending` | a PVC is `Pending` for 15m | warning |
 
-The last seven come from kube-state-metrics, which watches only pods, deployments,
+The last nine come from kube-state-metrics, which watches only pods, deployments,
 statefulsets, daemonsets, nodes, and PVCs and exposes only the 13 metrics these rules use
 (`cluster/monitoring/kube-state-metrics/values.yaml`).
 
