@@ -25,11 +25,13 @@ disables it with `--disable servicelb`.
 - **Pool:** `192.168.1.241`–`192.168.1.254` — outside the router's DHCP range (`.2`–`.240`).
 - **Speaker and controller:** both pinned to `pi4controller`. L2 advertisement needs the LAN
   (`eth0`), and the Pi Zeros have no LAN interface.
+- **FRR disabled** (`speaker.frr.enabled: false`): FRR is only used for BGP, and this cluster
+  announces via L2 only. Re-enable it if you ever add a `BGPPeer`.
 
 ## Verify
 
 ```bash
-kubectl -n metallb-system get pods -o wide             # controller 1/1, speaker 4/4 on pi4controller
+kubectl -n metallb-system get pods -o wide             # controller 1/1, speaker 1/1 on pi4controller
 kubectl -n metallb-system get ipaddresspool,l2advertisement
 kubectl get svc -A | grep LoadBalancer                 # EXTERNAL-IP in .241–.254
 ```

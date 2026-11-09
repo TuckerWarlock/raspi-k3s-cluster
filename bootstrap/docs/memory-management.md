@@ -84,7 +84,7 @@ Requests should reflect real steady-state usage. Current settings and measured u
 |-----------|------|---------|-------|----------|
 | ArgoCD application-controller | pi4controller | 256Mi | 512Mi | ~160–250Mi (400Mi+ while retrying failed syncs) |
 | VictoriaMetrics | pi4controller | 128Mi | 256Mi | ~120Mi |
-| MetalLB speaker / controller | pi4controller | 64Mi / 32Mi | 128Mi / 128Mi | ~50Mi / ~30Mi |
+| MetalLB speaker / controller | pi4controller | 64Mi / 32Mi | 128Mi / 128Mi | ~20Mi / ~30Mi (FRR sidecars disabled; were +34Mi) |
 | Traefik | pi4controller | 64Mi | 128Mi | ~25Mi |
 | Gatus | pi4controller | 32Mi | 64Mi | ~10Mi |
 | ntfy | pi4controller | 32Mi | 64Mi | ~15Mi |

@@ -30,7 +30,7 @@ local_ci.sh          # Same checks as CI
 ## Validate before every commit
 
 ```bash
-./local_ci.sh   # shellcheck, helmfile render + lint, kubeconform and Pluto on cluster/ + workloads/
+./local_ci.sh   # shellcheck; render helmfile + ArgoCD-deployed charts; kubeconform, policy checks, Pluto
 ```
 
 YAML syntax (Ruby's parser, built into macOS):
@@ -42,9 +42,12 @@ git ls-files '*.yaml' '*.yml' | ruby -ryaml -e 'STDIN.read.split("\n").each { |f
 Embedded YAML (e.g. the Gatus `config.yaml` inside `workloads/gatus/configmap.yaml`) is a
 string to the outer parser — parse it separately when you change it.
 
-CI renders only `helmfile.yaml` (ArgoCD). Charts referenced by ArgoCD Applications (MetalLB,
-Traefik, VictoriaMetrics, vmalert, kube-state-metrics) are **not** rendered in CI. When bumping one, render it locally:
-`helm template <name> <repo>/<chart> --version <v> -f <values.yaml> | kubeconform -strict -ignore-missing-schemas -summary -`.
+CI renders `helmfile.yaml` (ArgoCD) **and** every chart an ArgoCD Application deploys
+(`ci/render-argocd-apps.rb`), then runs kubeconform, Pluto, and `ci/policy-check.rb` on the
+output. The policy rules (scrape annotations need a port, every container has a memory
+limit, VictoriaMetrics reloads its scrape config) are in `.github/workflows/README.md`; add an
+exception there only with a reason. A new Application field the render script doesn't know
+(e.g. inline `helm.values`) makes it fail loudly — extend the script rather than work around it.
 
 ## Deploying changes
 

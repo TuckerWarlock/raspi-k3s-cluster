@@ -35,13 +35,36 @@ This directory contains validation-only CI workflows. They do not connect to a l
 1. Checkout repository.
 2. Install `helmfile` via `helmfile/helmfile-action`.
 3. Render all Helm releases from `helmfile.yaml` using `helmfile template > /tmp/all-rendered.yaml`.
-4. For `kubeconform` job:
+4. Render every chart deployed by an ArgoCD Application in `cluster/argocd/addons/` with
+   `ruby ci/render-argocd-apps.rb /tmp/argocd-rendered.yaml` — same chart, version, release name,
+   namespace, and Git value files ArgoCD uses (HTTP and OCI repos). Isolated Helm repo config, so
+   local `helm repo` state can't affect it.
+5. For `kubeconform` job:
 	 - Install tools using `yokawasa/action-setup-kube-tools`.
 	 - Validate raw manifests under `cluster/` and `workloads/` (excluding `values.yaml` and `patches/`).
-	 - Validate rendered Helm manifests in strict mode.
-5. For `pluto` job:
+	 - Validate both rendered files in strict mode.
+	 - Run `ruby ci/policy-check.rb` over raw + rendered manifests (rules below).
+6. For `pluto` job:
 	 - Install Pluto using `FairwindsOps/pluto/github-action@master`.
-	 - Check raw manifests (`cluster/`, `workloads/`) and rendered manifests for deprecated/removed APIs.
+	 - Check raw manifests (`cluster/`, `workloads/`) and both rendered files for deprecated/removed APIs.
+
+### Policy checks (`ci/policy-check.rb`)
+
+Repo rules that schema validation can't express. Each violation prints one line; any violation
+fails the job.
+
+| Rule | Fails when | Why |
+|---|---|---|
+| `scrape-port` | A Service or pod template has `prometheus.io/scrape: "true"` but no `prometheus.io/port` | VictoriaMetrics' scrape jobs `keep_if_equal` on that annotation, so the target is silently dropped |
+| `memory-limit` | A Deployment/StatefulSet/DaemonSet container has no `resources.limits.memory` (`replicas: 0` skipped) | An unbounded pod can OOM the controller or a Pi Zero |
+| `vm-scrape-reload` | A container runs with `-promscrape.config` but no `-promscrape.configCheckInterval` | The VictoriaMetrics chart doesn't restart the pod on scrape-config changes, so edits never load |
+
+Exceptions live in `EXCEPTIONS` at the top of the script, each keyed `rule:Kind/name/container`
+with a reason. There are none today: the first run flagged MetalLB's three FRR sidecars, and the
+fix was to disable FRR (`speaker.frr.enabled: false`, unused in L2 mode) rather than except them.
+
+Not catchable statically: a scrape target whose labels clash with the target's own
+(`exported_*` renames) — that depends on the data, so check it after deploy.
 
 ## Trigger Conditions
 
@@ -65,9 +88,7 @@ This directory contains validation-only CI workflows. They do not connect to a l
 - `push` to `main`
 - `workflow_dispatch` for manual runs
 
-> Helm charts referenced by ArgoCD Applications (MetalLB, Traefik, VictoriaMetrics) are not
-> rendered in CI — only `helmfile.yaml` (ArgoCD) is. Render those locally with `helm template`
-> when bumping a chart version.
+Also triggers on changes under `ci/**` (the render and policy scripts).
 
 ## Version Pinning
 
