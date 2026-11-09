@@ -24,11 +24,6 @@
 require 'yaml'
 
 EXCEPTIONS = {
-  # MetalLB's FRR sidecars ship without limits. FRR is only for BGP; this cluster uses L2
-  # only, so the fix is speaker.frr.enabled: false (follow-up) — then delete these three.
-  'memory-limit:DaemonSet/metallb-speaker/frr' => 'FRR unused (L2 mode); disable in follow-up',
-  'memory-limit:DaemonSet/metallb-speaker/frr-metrics' => 'FRR unused (L2 mode); disable in follow-up',
-  'memory-limit:DaemonSet/metallb-speaker/reloader' => 'FRR unused (L2 mode); disable in follow-up'
 }.freeze
 
 WORKLOADS = %w[Deployment StatefulSet DaemonSet].freeze

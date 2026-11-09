@@ -60,8 +60,8 @@ fails the job.
 | `vm-scrape-reload` | A container runs with `-promscrape.config` but no `-promscrape.configCheckInterval` | The VictoriaMetrics chart doesn't restart the pod on scrape-config changes, so edits never load |
 
 Exceptions live in `EXCEPTIONS` at the top of the script, each keyed `rule:Kind/name/container`
-with a reason. Currently: MetalLB's three FRR sidecars (FRR is unused in L2 mode; remove once
-`speaker.frr.enabled: false`).
+with a reason. There are none today: the first run flagged MetalLB's three FRR sidecars, and the
+fix was to disable FRR (`speaker.frr.enabled: false`, unused in L2 mode) rather than except them.
 
 Not catchable statically: a scrape target whose labels clash with the target's own
 (`exported_*` renames) — that depends on the data, so check it after deploy.
