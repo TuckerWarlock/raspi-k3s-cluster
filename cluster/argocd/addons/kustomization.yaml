@@ -10,6 +10,8 @@ resources:
   - victoria-metrics.yaml
   # Alerting — vmalert + Alertmanager → ntfy (values in cluster/monitoring/vmalert/)
   - vmalert.yaml
+  # Kubernetes object state for the vmalert "kubernetes" rules (values in cluster/monitoring/kube-state-metrics/)
+  - kube-state-metrics.yaml
   # ArgoCD own config (ingress, etc.) — managed by ArgoCD
   - argocd-config.yaml
   # User workloads root app — manages cluster/argocd/workloads/

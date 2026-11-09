@@ -21,6 +21,9 @@ server:
     # the pod (a count() over all ~170k series did exactly that). ~50k remain after the
     # relabel drops below.
     search.maxUniqueTimeseries: "60000"
+    # The chart doesn't restart the pod when the scrape ConfigMap changes; re-read it every
+    # minute so scrape-config edits apply without a restart
+    promscrape.configCheckInterval: 1m
 
   persistentVolume:
     enabled: true
@@ -46,6 +49,13 @@ server:
   # pod/service annotated prometheus.io/scrape: "true"
   scrape:
     enabled: true
+    # kube-state-metrics reports *other* objects' namespace/pod/node labels, so they must be
+    # kept as-is (honor_labels) rather than overwritten by the scrape target's own labels.
+    extraScrapeConfigs:
+      - job_name: kube-state-metrics
+        honor_labels: true
+        static_configs:
+          - targets: ["kube-state-metrics.monitoring.svc:8080"]
 
   ingress:
     enabled: true

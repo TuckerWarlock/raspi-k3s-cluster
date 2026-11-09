@@ -88,7 +88,8 @@ K3s's bundled Traefik and ServiceLB are **disabled** (`--disable traefik --disab
 | **VictoriaMetrics** | Metrics storage + scraping (single-node) | ArgoCD (Helm, OCI) | controller |
 | **Gatus** | Status page and uptime checks | ArgoCD (manifests) | controller |
 | **ntfy** | Push notifications to the iPhone (`ntfy.home.arpa`) | ArgoCD (manifests) | controller |
-| **vmalert + Alertmanager** | Memory/scrape alert rules → ntfy | ArgoCD (Helm, OCI) | controller |
+| **vmalert + Alertmanager** | Memory, scrape, and Kubernetes-state alert rules → ntfy | ArgoCD (Helm, OCI) | controller |
+| **kube-state-metrics** | Pod/deployment/node/PVC state for alerts (6 resource types, 13 metrics) | ArgoCD (Helm, OCI) | a Pi Zero |
 
 ### Planned
 
@@ -146,6 +147,7 @@ nodeSelector:
 | ArgoCD server | API + UI server; ~80Mi idle |
 | ArgoCD redis | Session cache; ~15Mi idle |
 | ArgoCD repo-server | Git repo fetch + manifest rendering; ~60Mi idle |
+| kube-state-metrics | Needs neither the LAN nor USB storage; 32/64Mi |
 | Application workloads | Schedule freely across workers |
 
 Workers use:
@@ -231,3 +233,4 @@ Capturing key decisions and the reasoning behind them.
 | Chart source for VictoriaMetrics | OCI (`ghcr.io`) | HTTP Helm repo | The 3.6MB HTTP `index.yaml` took the Pi Zero repo-server ~74s, past ArgoCD's 60s deadline |
 | Pi 4 data | USB drive at `/mnt/usb` | SD card only | SD card corrupts on power loss; images, PVCs, and backups live on USB |
 | ntfy hostname | `ntfy.home.arpa` | `ntfy.cluster.local` | iOS resolves `.local` only via mDNS, so a Pi-hole record would never be used by the phone |
+| kube-state-metrics scraping | Dedicated VictoriaMetrics job with `honor_labels: true` | Generic `prometheus.io/scrape` service job | The generic job drops it (no port annotation) and renames its `namespace`/`pod`/`node` labels to `exported_*` |

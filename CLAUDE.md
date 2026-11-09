@@ -7,9 +7,10 @@ from `main`, so **merging to `main` deploys to the live cluster**.
 ## Current state
 
 - **Running:** K3s v1.37, MetalLB, Traefik (chart 42.x), ArgoCD v3.6 (chart 10.x),
-  VictoriaMetrics single-node, vmalert + Alertmanager, Gatus, ntfy (alerts from both land on
-  the `cluster-status` topic).
-- **Planned:** WireGuard / Tailscale.
+  VictoriaMetrics single-node, vmalert + Alertmanager, kube-state-metrics, Gatus, ntfy
+  (alerts from Gatus and Alertmanager land on the `cluster-status` topic).
+- **Planned (on hold):** Tailscale subnet router + split DNS for `home.arpa`; VictoriaLogs
+  (`victoria-logs-single` + `victoria-logs-collector`).
 - **Removed:** Longhorn (too heavy; using K3s local-path), Prometheus/Grafana/Loki (replaced by
   VictoriaMetrics), Monday/Ollama (LLM inference too slow on the Pi 4 CPU).
 
@@ -20,7 +21,7 @@ bootstrap/scripts/   # Run by hand on the Pis (setup-*, install-*, set-static-ip
 bootstrap/docs/      # rebuild.md = the ordered runbook; 01–07 = reference + troubleshooting
 cluster/argocd/      # argocd-values.yaml, root-application.yaml, addons/, config/, workloads/
 cluster/core-system/ # MetalLB and Traefik Helm values (+ MetalLB IP pool config)
-cluster/monitoring/  # VictoriaMetrics values
+cluster/monitoring/  # VictoriaMetrics, vmalert, and kube-state-metrics values
 workloads/<app>/     # App manifests + kustomization.yaml (e.g. gatus/)
 helmfile.yaml        # Installs ArgoCD only — ArgoCD deploys everything else
 local_ci.sh          # Same checks as CI
@@ -42,7 +43,7 @@ Embedded YAML (e.g. the Gatus `config.yaml` inside `workloads/gatus/configmap.ya
 string to the outer parser — parse it separately when you change it.
 
 CI renders only `helmfile.yaml` (ArgoCD). Charts referenced by ArgoCD Applications (MetalLB,
-Traefik, VictoriaMetrics) are **not** rendered in CI. When bumping one, render it locally:
+Traefik, VictoriaMetrics, vmalert, kube-state-metrics) are **not** rendered in CI. When bumping one, render it locally:
 `helm template <name> <repo>/<chart> --version <v> -f <values.yaml> | kubeconform -strict -ignore-missing-schemas -summary -`.
 
 ## Deploying changes
