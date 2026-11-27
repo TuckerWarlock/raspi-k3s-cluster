@@ -4,8 +4,9 @@
 # Installs CLI tools, sets up .bash_profile, and installs oh-my-posh + FiraCode font; configures
 # swap, memory sysctls, the ClusterHAT shutdown hook and fan service, the nightly K3s backup
 # timer, installs Tailscale (subnet router — `tailscale up` is a manual step, see
-# bootstrap/docs/rebuild.md step 3.10), and installs the Pi Zero watchdog timer (left disabled
-# until the Zeros are set up — rebuild.md step 3.11).
+# bootstrap/docs/rebuild.md step 3.10), installs the Pi Zero watchdog timer (left disabled
+# until the Zeros are set up — rebuild.md step 3.11), and enables a weekly read-only SD-card
+# integrity check (system-file-check.timer).
 
 set -euo pipefail
 
@@ -230,6 +231,41 @@ if systemctl is-enabled --quiet zero-watchdog.timer; then
 else
   echo "    zero-watchdog installed (disabled) — enable it in rebuild.md step 3.11"
 fi
+
+echo ""
+echo "==> Installing weekly system file check (dpkg database, package checksums, ext4 errors)..."
+# Read-only, so it's enabled right away. Notifications reuse the watchdog's ntfy token
+# (/etc/zero-watchdog.env, rebuild.md step 3.11); without it, results only go to the journal.
+sudo install -m 755 "$SCRIPT_DIR/system-file-check.sh" /usr/local/sbin/system-file-check.sh
+
+sudo tee /etc/systemd/system/system-file-check.service > /dev/null << 'EOF'
+[Unit]
+Description=Check the SD card for silently corrupted system files
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/system-file-check.sh
+# dpkg --verify reads every package file; stay out of the cluster's way
+Nice=19
+IOSchedulingClass=idle
+EOF
+
+sudo tee /etc/systemd/system/system-file-check.timer > /dev/null << 'EOF'
+[Unit]
+Description=Weekly SD-card integrity check
+
+[Timer]
+# Sunday 04:00, after the 03:00 K3s backup; Persistent runs a missed check after boot
+OnCalendar=Sun *-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now system-file-check.timer
+echo "    system-file-check.timer enabled — weekly; run now: sudo systemctl start system-file-check.service"
 
 echo ""
 echo "==> Done! Run 'source ~/.bash_profile' or open a new shell to apply changes."
