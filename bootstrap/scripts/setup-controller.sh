@@ -3,8 +3,9 @@
 # Run once on the Raspberry Pi 4 controller after first boot (and after every reflash).
 # Installs CLI tools, sets up .bash_profile, and installs oh-my-posh + FiraCode font; configures
 # swap, memory sysctls, the ClusterHAT shutdown hook and fan service, the nightly K3s backup
-# timer, and installs Tailscale (subnet router — `tailscale up` is a manual step, see
-# bootstrap/docs/rebuild.md step 3.10).
+# timer, installs Tailscale (subnet router — `tailscale up` is a manual step, see
+# bootstrap/docs/rebuild.md step 3.10), and installs the Pi Zero watchdog timer (left disabled
+# until the Zeros are set up — rebuild.md step 3.11).
 
 set -euo pipefail
 
@@ -193,6 +194,42 @@ net.ipv6.conf.all.forwarding = 1
 EOF
 sudo sysctl -p /etc/sysctl.d/99-tailscale.conf > /dev/null
 echo "    tailscale installed — next: sudo tailscale up (rebuild.md step 3.10)"
+
+echo ""
+echo "==> Installing Pi Zero watchdog (power-cycles a Zero that stops answering ping)..."
+# Installed but NOT enabled: enabling it before the Zeros are flashed and joined would
+# power-cycle them mid-install. Enable it in rebuild.md step 3.11.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+sudo install -m 755 "$SCRIPT_DIR/zero-watchdog.sh" /usr/local/sbin/zero-watchdog.sh
+
+sudo tee /etc/systemd/system/zero-watchdog.service > /dev/null << 'EOF'
+[Unit]
+Description=Power-cycle Pi Zero nodes that stopped answering ping
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/zero-watchdog.sh
+EOF
+
+sudo tee /etc/systemd/system/zero-watchdog.timer > /dev/null << 'EOF'
+[Unit]
+Description=Check Pi Zero nodes every minute
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1min
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+if systemctl is-enabled --quiet zero-watchdog.timer; then
+  echo "    zero-watchdog.timer already enabled — script updated"
+else
+  echo "    zero-watchdog installed (disabled) — enable it in rebuild.md step 3.11"
+fi
 
 echo ""
 echo "==> Done! Run 'source ~/.bash_profile' or open a new shell to apply changes."

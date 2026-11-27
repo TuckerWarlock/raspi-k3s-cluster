@@ -149,6 +149,10 @@ stop and investigate before deploying anything new.
 **Service health:** Gatus sends a push to the `cluster-status` ntfy topic when any check fails
 3 times in a row (~3 minutes), and again when it recovers (`workloads/gatus/configmap.yaml`).
 
+**Unresponsive Pi Zeros:** `zero-watchdog.timer` on the Pi 4 (host, not Kubernetes) power-cycles
+a Zero that hasn't answered ping for 10 minutes and pushes a notification to the same topic
+([rebuild.md 3.11](rebuild.md#311--enable-the-pi-zero-watchdog)).
+
 **Memory and scraping:** vmalert evaluates these rules every minute against VictoriaMetrics;
 Alertmanager pushes firing and resolved alerts to the same ntfy topic
 (`cluster/monitoring/vmalert/values.yaml`):

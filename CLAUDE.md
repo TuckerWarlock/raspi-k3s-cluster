@@ -116,7 +116,9 @@ header accurate.
 
 | Script | Run as | Notes |
 |--------|--------|-------|
-| `setup-controller.sh` | user | Uses sudo internally; idempotent; installs fan service, backup timer, Tailscale (`tailscale up` is manual) |
+| `setup-controller.sh` | user | Uses sudo internally; idempotent; installs fan service, backup timer, Tailscale (`tailscale up` is manual), Pi Zero watchdog (disabled until rebuild 3.11) |
+| `setup-agents.sh` | user, on each Zero | Persistent journal (32M) + shell tools |
+| `zero-watchdog.sh` | systemd timer on the Pi 4 | Power-cycles a Zero after 10 min without ping; max 3 cycles; `journalctl -t zero-watchdog` |
 | `set-static-ip.sh` | `sudo bash` | `sudo bash set-static-ip.sh 192.168.1.135` |
 | `install-k3s-server.sh` | `sudo bash` | Needs cgroup flags in `cmdline.txt` |
 | `install-k3s-agent.sh` | user | `K3S_TOKEN` + `NODE_IP` env vars; download first, never `curl \| bash` |

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # setup-agents.sh
 # Run on each Pi Zero 2 W worker node (p1–p4) after first boot.
-# Installs CLI tools and sets up .bash_profile with oh-my-posh (tokyo theme).
+# Keeps the systemd journal across reboots (capped at 32M), installs CLI tools, and sets up
+# .bash_profile with oh-my-posh (tokyo theme).
 #
 # Usage:
 #   bash setup-agents.sh
@@ -9,6 +10,20 @@
 #   curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/bootstrap/scripts/setup-agents.sh | bash
 
 set -euo pipefail
+
+echo "==> Keeping the journal across reboots (capped at 32M)..."
+# By default the journal lives in RAM, so a hang or power-cycle loses the logs that explain
+# it (p3, 2026-11-27). The cap limits SD-card wear.
+sudo mkdir -p /var/log/journal /etc/systemd/journald.conf.d
+sudo tee /etc/systemd/journald.conf.d/persistent.conf > /dev/null << 'EOF'
+[Journal]
+Storage=persistent
+SystemMaxUse=32M
+EOF
+sudo systemctl restart systemd-journald
+echo "    journal is persistent — after a crash: journalctl -b -1"
+
+echo ""
 
 echo "==> Installing packages..."
 sudo apt install -y lsd
