@@ -153,6 +153,10 @@ stop and investigate before deploying anything new.
 a Zero that hasn't answered ping for 10 minutes and pushes a notification to the same topic
 ([rebuild.md 3.11](rebuild.md#311--enable-the-pi-zero-watchdog)).
 
+**SD-card integrity:** `system-file-check.timer` on the Pi 4 (host) runs weekly — `apt-get
+check`, `dpkg --verify`, and the root filesystem's ext4 error count — and pushes to the same topic
+on any failure ([rebuild.md → Package files fail their checksums](rebuild.md#package-files-fail-their-checksums)).
+
 **Memory and scraping:** vmalert evaluates these rules every minute against VictoriaMetrics;
 Alertmanager pushes firing and resolved alerts to the same ntfy topic
 (`cluster/monitoring/vmalert/values.yaml`):

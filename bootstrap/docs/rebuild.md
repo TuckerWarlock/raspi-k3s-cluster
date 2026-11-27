@@ -518,6 +518,9 @@ sudo systemctl enable --now zero-watchdog.timer
 systemctl list-timers zero-watchdog.timer
 ```
 
+The same token is reused by the weekly SD-card integrity check (`system-file-check.timer`,
+enabled by `setup-controller.sh`), so its alerts reach the phone too.
+
 Every minute it pings each Zero whose ClusterHAT port is on. After **10 minutes** without an
 answer it power-cycles that port (`clusterctrl off/on`) and pushes a notification; after **3**
 cycles that don't bring the node back it stops and sends one "giving up" message. It ignores
@@ -536,7 +539,7 @@ kubectl get nodes                      # all Ready
 kubectl get pods -A                    # Running/Completed — no CrashLoopBackOff or OOMKilled
 kubectl top nodes                      # controller under ~80% memory
 kubectl -n argocd get applications     # all Synced + Healthy
-systemctl status clusterhat-fan k3s-backup.timer tailscaled zero-watchdog.timer
+systemctl status clusterhat-fan k3s-backup.timer tailscaled zero-watchdog.timer system-file-check.timer
 tailscale status                       # pi4controller online; routes approved
 ```
 
@@ -637,3 +640,96 @@ sudo systemctl start k3s
 
 Re-clone the repo (`rm -rf ~/raspi-k3s-cluster` and step 1.3's `git clone`). If it recurs,
 check the SD card: `dmesg | grep -iE "mmc|ext4|i/o error"`.
+
+### Package files fail their checksums
+
+Raised by `system-file-check.timer` (weekly, Sunday 04:00), or seen as apt errors like
+`E: Unable to parse package file /var/lib/dpkg/status`. On 2026-11-27 the Pi 4's SD card
+silently changed file contents — the dpkg database, 13 package files, and directory entries in
+`/lib` — with no kernel errors, no reboot, and no undervoltage (the files' modification times
+didn't change, so nothing wrote them). This is the procedure that repaired it.
+
+Run the check by hand any time: `sudo systemctl start system-file-check.service; journalctl -t system-file-check -n 5`.
+
+**First, secure a backup off the Pi** — the K3s database is on the same card:
+
+```bash
+sudo systemctl start k3s-backup.service
+B=/mnt/usb/backups/k3s-$(date +%F)
+sudo sqlite3 "$B/state.db" 'PRAGMA integrity_check;'          # must print: ok
+sudo tar czf /tmp/k3s-backup.tgz -C /mnt/usb/backups "$(basename "$B")" && sudo chmod 644 /tmp/k3s-backup.tgz
+# laptop: scp warl0ck@pi4controller.local:/tmp/k3s-backup.tgz ~/   — then on the Pi: sudo rm /tmp/k3s-backup.tgz
+```
+
+**1. dpkg database corrupt** (`apt-get check` fails). dpkg keeps `/var/lib/dpkg/status-old` and
+daily copies in `/var/backups/`; find which still parse:
+
+```bash
+for f in /var/lib/dpkg/status-old /var/backups/dpkg.status.*; do printf '%s: ' "$f"; z=$f
+  [[ $f == *.gz ]] && { zcat "$f" > /tmp/s; z=/tmp/s; }
+  sudo apt-get check -o Dir::State::status="$z" >/dev/null 2>&1 && echo OK || echo BROKEN; done
+```
+
+Then compare the newest good copy with the current file, entry by entry:
+
+```bash
+sudo python3 - <<'EOF'
+def load(f): return {p.split('\n', 1)[0]: p for p in open(f).read().strip().split('\n\n')}
+cur, old = load('/var/lib/dpkg/status'), load('/var/lib/dpkg/status-old')   # or a /var/backups copy
+print('differ:', [k for k in cur if k in old and cur[k] != old[k]])
+print('only in current:', [k for k in cur if k not in old])
+print('missing from current:', [k for k in old if k not in cur])
+EOF
+```
+
+Entries that differ because a package was installed or upgraded after the good copy was taken
+(e.g. `Status: install ok installed` vs `unpacked`) should come from the current file; entries
+that are garbled, truncated, or missing come from the good copy. Build the merged file with the
+current entries you're keeping, check it, then install it:
+
+```bash
+sudo python3 - <<'EOF'
+def load(f): return open(f).read().strip().split('\n\n')
+take_current = {'Package: tailscale', 'Package: tailscale-archive-keyring'}   # adjust
+cur = {p.split('\n', 1)[0]: p for p in load('/var/lib/dpkg/status')}
+out = [cur[p.split('\n', 1)[0]] if p.split('\n', 1)[0] in take_current else p for p in load('/var/lib/dpkg/status-old')]
+open('/tmp/dpkg-status.fixed', 'w').write('\n\n'.join(out) + '\n')
+EOF
+sudo apt-get check -o Dir::State::status=/tmp/dpkg-status.fixed && echo "fixed copy OK"
+sudo cp /var/lib/dpkg/status /var/lib/dpkg/status.broken
+sudo install -m 644 /tmp/dpkg-status.fixed /var/lib/dpkg/status
+sudo dpkg --audit && sudo apt-get check && echo "dpkg OK"
+```
+
+**2. Package files fail their checksums.** Reinstall the packages that own them:
+
+```bash
+sudo dpkg --verify 2>/dev/null | grep -v ' c /' | awk '{print $NF}' > /tmp/bad-files
+pkgs=$(xargs -a /tmp/bad-files dpkg -S 2>/dev/null | cut -d: -f1 | tr ',' '\n' | sort -u | xargs)
+sudo apt-get install --reinstall -y $pkgs
+sudo dpkg --configure -a 2>&1 | grep -v "Can't link"
+sudo dpkg --verify 2>/dev/null | grep -v ' c /' | wc -l            # 0 = all intact
+```
+
+`ldconfig` printing `Can't link /lib/…/<garbage> to …` means the corruption reached directory
+entries — go on to step 3. (Interrupting it is safe; it swaps the new cache in atomically.)
+
+**3. Filesystem damage** (garbled names, or `dumpe2fs` reports errors). A mounted root can't be
+repaired; force a full check at the next boot:
+
+```bash
+sudo tune2fs -c 1 /dev/mmcblk0p2
+clusterctrl off && sudo reboot
+# after boot:
+sudo journalctl -b -u systemd-fsck-root --no-pager | tail -20      # what it repaired
+sudo tune2fs -c -1 /dev/mmcblk0p2                                   # back to normal
+sudo find /lib/aarch64-linux-gnu -maxdepth 1 -name '*[^ -~]*' | wc -l   # 0
+clusterctrl on
+```
+
+If the boot-time check can't repair it unattended, the Pi waits for a keyboard and screen —
+which is why the backup goes to the laptop first. Worst case: reflash and restore (step 1.8).
+
+**If it comes back** within weeks, the card itself is failing: clone the running system to a
+new (high-endurance) card with `rpi-clone` from a USB card reader — a fresh filesystem with the
+same files, no reconfiguration — or reflash and restore. A USB SSD boot is the durable fix.
