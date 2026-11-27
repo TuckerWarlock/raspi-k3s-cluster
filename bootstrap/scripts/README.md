@@ -6,9 +6,10 @@ One-time setup scripts for provisioning the K3s cluster on Raspberry Pi hardware
 
 | Script | Purpose | Run As |
 |--------|---------|--------|
-| `setup-controller.sh` | CLI tools, swap, sysctls, shutdown hook, fan service, nightly K3s backup timer, Tailscale install | `bash` |
+| `setup-controller.sh` | CLI tools, swap, sysctls, shutdown hook, fan service, nightly K3s backup timer, Tailscale install, Pi Zero watchdog (disabled until step 3.11) | `bash` |
 | `set-static-ip.sh` | Set static IPv4 on Pi 4 | `sudo bash` |
-| `setup-agents.sh` | Install CLI tools on Pi Zero workers | `bash` |
+| `setup-agents.sh` | Persistent journal (32M cap) + CLI tools on Pi Zero workers | `bash` |
+| `zero-watchdog.sh` | Power-cycles a Pi Zero that stops answering ping (installed by `setup-controller.sh`, run by `zero-watchdog.timer`) | systemd |
 | `install-k3s-server.sh` | Install K3s control plane on Pi 4 | `sudo bash` |
 | `install-k3s-agent.sh` | Install K3s agent on Pi Zero workers | `bash` |
 | `install-helm.sh` | Install Helm, Helmfile | `bash` |

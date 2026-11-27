@@ -41,6 +41,10 @@ scheduled here small.
 
 - **Node unreachable** (`Could not resolve hostname pN.local`, no `ethpiN` interface) —
   [rebuild.md → Pi Zero unreachable](rebuild.md#pi-zero-unreachable).
+- **A node goes `NotReady` on its own while its port stays powered** — usually the Zero's USB
+  network link dropping. The Pi 4's `zero-watchdog.timer` power-cycles it after 10 minutes
+  ([rebuild.md 3.11](rebuild.md#311--enable-the-pi-zero-watchdog)); the node's persistent journal
+  (`journalctl -b -1`) shows what happened before.
 - **Agents `NotReady` after the controller was rebuilt** (new token and CA) —
   [rebuild.md → agents NotReady](rebuild.md#pi-zero-agents-notready-after-a-controller-rebuild).
 - **Agent logs** (on the node): `sudo journalctl -u k3s-agent -n 100 --no-pager`

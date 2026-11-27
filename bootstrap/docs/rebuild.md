@@ -147,7 +147,7 @@ kubectl get nodes          # old nodes + workloads reappear
 ```
 
 After a restore the token and CA are unchanged, so: skip 1.7, skip 2.4–2.5 if the Pi Zero
-SD cards weren't reflashed, and skip 3.2–3.5, 3.8, and 3.9 (ArgoCD, its apps, the local-path config, and
+SD cards weren't reflashed, and skip 3.2–3.5, 3.8, 3.9, and 3.11's ntfy user (ArgoCD, its apps, the local-path config, and
 the TLS secrets all live in the restored datastore; ntfy's users live on its USB-backed PVC). Continue at [Phase 4](#phase-4--verify).
 
 > Restore is not yet tested on hardware. Test a backup by hand any time:
@@ -230,6 +230,24 @@ kubectl label node p1 p2 p3 p4 node-role.kubernetes.io/worker=worker hardware=pi
 
 The `worker` label is what ArgoCD's server, redis, and repo-server schedule on. Don't taint
 the Zeros — those pods have no toleration.
+
+### 2.6 — Keep each Zero's journal across reboots
+
+By default a Zero's journal lives in RAM, so when one hangs or is power-cycled, the logs that
+explain it are gone. `setup-agents.sh` makes the journal persistent (capped at 32M to spare the
+SD card) and installs the shell tools:
+
+```bash
+for i in 1 2 3 4; do
+  ssh warl0ck@172.19.181.$i "
+    curl -sfL https://raw.githubusercontent.com/TuckerWarlock/raspi-k3s-cluster/main/bootstrap/scripts/setup-agents.sh \
+      -o setup-agents.sh && bash setup-agents.sh
+  "
+done
+```
+
+After a node misbehaves: `ssh warl0ck@172.19.181.N 'journalctl -b -1 -n 100 --no-pager'`
+shows the end of the previous boot.
 
 ---
 
@@ -482,6 +500,33 @@ reaches the phone.
 > Remove the old `pi4controller` machine in the admin console first, then run `tailscale up`
 > again and re-approve the route and disable key expiry. Split DNS is tailnet-wide and survives.
 
+### 3.11 — Enable the Pi Zero watchdog
+
+`setup-controller.sh` installed `zero-watchdog.timer` but left it **disabled**, so it couldn't
+power-cycle a Zero mid-install. Now that every Zero is joined and Ready, give it an ntfy token
+and enable it:
+
+```bash
+# On your laptop — a write-only ntfy user for the watchdog
+kubectl -n ntfy exec deploy/ntfy -- env NTFY_PASSWORD="$(openssl rand -base64 24)" ntfy user add watchdog
+kubectl -n ntfy exec deploy/ntfy -- ntfy access watchdog cluster-status write-only
+kubectl -n ntfy exec deploy/ntfy -- ntfy token add watchdog | grep -o 'tk_[a-z0-9]*'   # copy it
+
+# On the Pi 4
+echo 'NTFY_TOKEN=tk_…' | sudo tee /etc/zero-watchdog.env > /dev/null && sudo chmod 600 /etc/zero-watchdog.env
+sudo systemctl enable --now zero-watchdog.timer
+systemctl list-timers zero-watchdog.timer
+```
+
+Every minute it pings each Zero whose ClusterHAT port is on. After **10 minutes** without an
+answer it power-cycles that port (`clusterctrl off/on`) and pushes a notification; after **3**
+cycles that don't bring the node back it stops and sends one "giving up" message. It ignores
+ports switched off on purpose and does nothing while the USB hub is off. Its log:
+`journalctl -t zero-watchdog`.
+
+For planned Zero maintenance (reflashing, long debugging), pause it:
+`sudo systemctl stop zero-watchdog.timer` — and `start` it again afterwards.
+
 ---
 
 ## Phase 4 — Verify
@@ -491,7 +536,7 @@ kubectl get nodes                      # all Ready
 kubectl get pods -A                    # Running/Completed — no CrashLoopBackOff or OOMKilled
 kubectl top nodes                      # controller under ~80% memory
 kubectl -n argocd get applications     # all Synced + Healthy
-systemctl status clusterhat-fan k3s-backup.timer tailscaled
+systemctl status clusterhat-fan k3s-backup.timer tailscaled zero-watchdog.timer
 tailscale status                       # pi4controller online; routes approved
 ```
 
@@ -532,6 +577,13 @@ interface on the Pi 4:
    ```
 4. Still nothing: check that SD card has the right per-node CNAT image (P1–P4) and the
    underclock lines from 2.1.
+
+**`ethpiN` is up but the node doesn't answer ping** (2026-11-27, p3): the Zero's end of the USB
+network link died while its OS kept running, so the kubelet went silent and the node turned
+`NotReady` — 3h18m until it was power-cycled by hand. Memory was normal and `vcgencmd
+get_throttled` showed `0x0`. A power-cycle of that port fixes it; the watchdog (step 3.11) now
+does that automatically after 10 minutes. With the persistent journal (step 2.6),
+`journalctl -b -1` on the node afterwards shows what the link did before it dropped.
 
 Use the IP (`ssh warl0ck@172.19.181.3`) if only the `.local` name fails to resolve.
 
